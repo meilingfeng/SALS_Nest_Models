@@ -14,11 +14,11 @@ library(GLCMTextures)
 #values(uvvr)<-runif(ncell(uvvr),0,2)
 
 
-#ndvi<-list()
-#ndvi[[1]]<-rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=20, ymax=40)
-#values(ndvi[[1]])<-runif(ncell(ndvi[[1]]),0,1)
-#ndvi[[2]]<-rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=41, ymax=60)
-#values(ndvi[[2]])<-runif(ncell(ndvi[[2]]),0,1)
+ndvi<-list()
+ndvi[[1]]<-rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=20, ymax=40)
+values(ndvi[[1]])<-runif(ncell(ndvi[[1]]),0,1)
+ndvi[[2]]<-rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=41, ymax=60)
+values(ndvi[[2]])<-runif(ncell(ndvi[[2]]),0,1)
 
 #pca<-list()
 #pca[[1]]<-rast(ncol=10, nrow=10, xmin=-150, xmax=-80, ymin=20, ymax=40)
@@ -36,14 +36,20 @@ library(GLCMTextures)
 ## Set file path to data
 # -------------------------------------------
 dat_path<-"D:/Research/SHARP/Data/"
-path_out<-"D:/Research/SHARP/Outputs/"
 #dat_path<-"/home/FCAM/mlfeng/Data/"
+path_out<-"D:/Research/SHARP/Outputs/"
+
 
 
 
 ## 1. Format Nest Observations
 # -------------------------------------
 # load nest observation shapefile
+if(file.exists(paste0(path_out,"nest.rda"))){
+  load(paste0(path_out,"nest.rda"))
+}
+
+if(!file.exists(paste0(path_out,"nest.rda"))){
 nests<-st_read(paste0(dat_path,"Nest_Locations/nest_locations_01_3_23.shp"))%>%
   # filter records to just SALS or species of interest
   filter(Species=="SALS"&
@@ -67,13 +73,14 @@ nests_buff<- nests%>%
   st_buffer(dist = 15)%>%
   distinct(.keep_all = TRUE)
 
-
+}
 ## 2. Sample environmental data at nests using their original resolutions
 # --------------------------------------------------------------------------
 
 ## 2. a. Load in data
 #---------------------
 
+if(!file.exists(paste0(path_out,"enviro.rda"))){
 
 ## Environmental Predictor 1: Marsh Vegetation Classes
 
@@ -146,10 +153,17 @@ for(i in 1:length(ndvi)){
   dat[dat<0]<-0
   ndvi[[i]]<-dat
 }
-
+}
 
 ## 3. Calculate texture surfaces
 # --------------------------------------------
+if(file.exists(paste0(path_out,"enviro.rda")) &
+   !file.exitst(paste0(path_out,"txt.rda"))){
+  
+  load(paste0(path_out,"enviro.rda"))
+
+  #save(nests,nests_buff,file = paste0(path_out,"nest.rda"))
+  #save(dat_path,zones,area,path_out,file = paste0(path_out,"param.rda"))))
 
 ## 3. a. Raster Quanitization 
 #----------------------------
@@ -157,6 +171,7 @@ for(i in 1:length(ndvi)){
 # alternative option is "equal prob" which splits by quantiles, used in original paper (Haralick and Shanmugam 1973)
 # NDVI of live plants ranges 0:1, set range and breaks at 0.1 intervals
 txt_homo<-txt_entro<-txt_corr<-list()
+
 for (i in 1:length(ndvi)){
   ndvi_rq<- quantize_raster(r = ndvi[[i]], n_levels = 10, method = "equal range")
   
@@ -174,7 +189,21 @@ for (i in 1:length(ndvi)){
   txt_corr[[i]]<-txt[[3]]
   
 }
+
+  }
+
+if(!file.exists(paste0(path_out,"txt.rda"))){
 save(txt_homo,txt_entro,txt_corr,file = paste0(path_out,"txt.rda"))
+}
+
+if(!file.exists(paste0(path_out,"enviro.rda"))){
 save(ndvi,pca,uvvr,uvvr_diff,vg_cls,veg_class,file = paste0(path_out,"enviro.rda"))
+}
+
+if(!file.exists(paste0(path_out,"nest.rda"))){
 save(nests,nests_buff,file = paste0(path_out,"nest.rda"))
+}
+
+if(!file.exists(paste0(path_out,"param.rda"))){
 save(dat_path,zones,area,path_out,file = paste0(path_out,"param.rda"))
+}
