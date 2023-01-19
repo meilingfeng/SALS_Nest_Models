@@ -592,7 +592,7 @@ for (i in 1:length(vg_cls)) {
 uvvr_temp[[i]]<-crop(extend(uvvr,vg_cls[[i]]),vg_cls[[i]])%>%
            terra::resample(vg_cls[[i]],method="bilinear")
     #write to file
-#writeRaster(uvvr_temp[[i]],filename=paste0(dat_path,"UVVR/UVVR_annual_mean/Z",i,"_uvvr_mean_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT8U'))
+writeRaster(uvvr_temp[[i]],filename=paste0(dat_path,"UVVR/UVVR_annual_mean/Z",i,"_uvvr_mean_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT8U'))
 
 }
 
@@ -603,7 +603,7 @@ for (i in 1:length(vg_cls)) {
   uvvr_diff_temp[[i]]<-crop(extend(uvvr_diff,vg_cls[[i]]),vg_cls[[i]])%>%
     resample(vg_cls[[i]],method="bilinear")
     #write to file
-  #writeRaster(uvvr_diff_temp[[i]],filename=paste0(dat_path,"UVVR/UVVR_change_14_18/Z",i,"_uvvr_diff_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT8S'))
+  writeRaster(uvvr_diff_temp[[i]],filename=paste0(dat_path,"UVVR/UVVR_change_14_18/Z",i,"_uvvr_diff_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT8S'))
   
 }
 
@@ -619,7 +619,7 @@ for(i in 1:length(ndvi)) {
   ndvi_temp[[i]]<-crop(extend(ndvi[[i]],vg_cls[[i]]),vg_cls[[i]])%>%
     terra::resample(vg_cls[[i]],method="bilinear")
     #write to file
-  #writeRaster(ndvi_temp[[i]],filename=paste0(dat_path,"Z",i,"_NDVI_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
+  writeRaster(ndvi_temp[[i]],filename=paste0(path_out,"Z",i,"_NDVI_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
 }
 
 
@@ -630,7 +630,7 @@ for(i in 1:length(pca)) {
   pca_temp[[i]]<-crop(extend(pca[[i]],vg_cls[[i]]),vg_cls[[i]])%>%
     terra::resample(vg_cls[[i]],method="bilinear")
     #write to file
-  #writeRaster(pca_temp[[i]],filename=paste0(dat_path,"Z",i,"_NPCA_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
+  writeRaster(pca_temp[[i]],filename=paste0(path_out,"Z",i,"_PCA_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
 }
 
 
@@ -641,7 +641,7 @@ for(i in 1:length(txt_homo)) {
   homo_temp[[i]]<-crop(extend(txt_homo[[i]],vg_cls[[i]]),vg_cls[[i]])%>%
     terra::resample(vg_cls[[i]],method="bilinear")
     #write to file
-  #writeRaster(homo_temp[[i]],filename=paste0(dat_path,"Z",i,"_homo_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
+  writeRaster(homo_temp[[i]],filename=paste0(path_out,"Z",i,"_homo_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
 }
 
 
@@ -652,7 +652,7 @@ for(i in 1:length(txt_entro)) {
   entro_temp[[i]]<-crop(extend(txt_entro[[i]],vg_cls[[i]]),vg_cls[[i]])%>%
     terra::resample(vg_cls[[i]],method="bilinear")
     #write to file
-  #writeRaster(entro_temp[[i]], filename=paste0(dat_path,"Z",i,"_entro_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
+  writeRaster(entro_temp[[i]], filename=paste0(path_out,"Z",i,"_entro_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
 }
 
 
@@ -664,7 +664,7 @@ for(i in 1:length(txt_corr)) {
   corr_temp[[i]]<-crop(extend(txt_corr[[i]],vg_cls[[i]]),vg_cls[[i]])%>%
     terra::resample(vg_cls[[i]],method="bilinear")
     #write to file
-  #writeRaster(corr_temp[[i]], filename=paste0(dat_path,"Z",i,"_corr_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
+  writeRaster(corr_temp[[i]], filename=paste0(path_out,"Z",i,"_corr_3m.tif"), overwrite=TRUE, wopt= list(gdal=c("COMPRESS=NONE"), datatype='FLT4S'))
 }
 
 
