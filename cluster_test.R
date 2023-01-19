@@ -188,22 +188,26 @@ for (i in 1:length(ndvi)){
   txt_entro[[i]]<-txt[[2]]
   txt_corr[[i]]<-txt[[3]]
   
-}
-
   }
 
-if(!file.exists(paste0(path_out,"txt.rda"))){
-save(txt_homo,txt_entro,txt_corr,file = paste0(path_out,"txt.rda"))
 }
 
-if(!file.exists(paste0(path_out,"enviro.rda"))){
-save(ndvi,pca,uvvr,uvvr_diff,vg_cls,veg_class,file = paste0(path_out,"enviro.rda"))
+
+if(!file.exists(paste0(path_out,"1_hom_txt.tif"))){
+  for(i in 1:length(txt_homo)){
+writeRaster(txt_homo[[i]],file=paste0(path_out,i,"_hom_txt.tif"),overwrite=T)
+writeRaster(txt_entro[[i]],file=paste0(path_out,i,"_ent_txt.tif"),overwrite=T)
+writeRaster(txt_corr[[i]],file=paste0(path_out,i,"_cor_txt.tif"),overwrite=T)
+  }
+}
+  
+
+
+if(!file.exists(paste0(path_out,"uvvr_noOutlier.tif"))){
+  writeRaster(uvvr,file = paste0(path_out,"uvvr_mean_noOutlier.tif"),overwrite=T)
+  writeRaster(uvvr_diff,file = paste0(path_out,"uvvr_diff_noOutlier.tif"),overwrite=T)
 }
 
 if(!file.exists(paste0(path_out,"nest.rda"))){
 save(nests,nests_buff,file = paste0(path_out,"nest.rda"))
-}
-
-if(!file.exists(paste0(path_out,"param.rda"))){
-save(dat_path,zones,area,path_out,file = paste0(path_out,"param.rda"))
 }
