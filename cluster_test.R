@@ -45,11 +45,7 @@ path_out<-"D:/Research/SHARP/Outputs/"
 ## 1. Format Nest Observations
 # -------------------------------------
 # load nest observation shapefile
-if(file.exists(paste0(path_out,"nest.rda"))){
-  load(paste0(path_out,"nest.rda"))
-}
 
-if(!file.exists(paste0(path_out,"nest.rda"))){
 nests<-st_read(paste0(dat_path,"Nest_Locations/nest_locations_01_3_23.shp"))%>%
   # filter records to just SALS or species of interest
   filter(Species=="SALS"&
@@ -73,14 +69,13 @@ nests_buff<- nests%>%
   st_buffer(dist = 15)%>%
   distinct(.keep_all = TRUE)
 
-}
+
 ## 2. Sample environmental data at nests using their original resolutions
 # --------------------------------------------------------------------------
 
 ## 2. a. Load in data
 #---------------------
 
-if(!file.exists(paste0(path_out,"enviro.rda"))){
 
 ## Environmental Predictor 1: Marsh Vegetation Classes
 
@@ -113,6 +108,13 @@ veg_class<-data.frame(value=c(1:2,4:9),
 # transformed uvvr coordinate system from WGS to NAD83 in ArcPro
 # just want band 4 (UVVR). Band 1 is unveg, 2 is veg, and 3 is proportion of water.
 
+# Read raster if it already exists. Otherwise process the UVVR layer.
+if(file.exists(paste0(path_out,"uvvr_mean_noOutlier.tif"))){
+  uvvr<-  rast(paste0(path_out,"uvvr_mean_noOutlier.tif"))
+  uvvr_dif<-  rast(paste0(path_out,"uvvr_diff_noOutlier.tif"))
+}
+if(!file.exists(paste0(path_out,"uvvr_mean_noOutlier.tif"))){
+  
 # A. UVVR mean across 2014-2018
 uvvr<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))%>%
   #terra::project("EPSG:4269")%>%
@@ -134,7 +136,7 @@ uvvr18[uvvr18>2]<-NA
 uvvr_diff<-uvvr18-uvvr14
 uvvr_diff<-uvvr_diff%>%
   dplyr::rename_with(function(x){x<-'uvvr_diff'},.cols = everything())
-
+}
 
 
 ## Environmental Predictor 3: NAIP
@@ -153,17 +155,23 @@ for(i in 1:length(ndvi)){
   dat[dat<0]<-0
   ndvi[[i]]<-dat
 }
-}
+
 
 ## 3. Calculate texture surfaces
 # --------------------------------------------
-if(file.exists(paste0(path_out,"enviro.rda")) &
-   !file.exitst(paste0(path_out,"txt.rda"))){
+# Read raster if it already exists. Otherwise process the texture layers.
+if(file.exists(paste0(path_out,"Correll_NAIP/hom_txt_1.tif"))){
+  #list raster files
+  file_list1<-unlist(map(paste0(dat_path,"Correll_NAIP/"),~list.files(.,pattern = "hom.tif$",full.names=T)))
+  file_list2<-unlist(map(paste0(dat_path,"Correll_NAIP/"),~list.files(.,pattern = "cor.tif$",full.names=T)))
+  file_list3<-unlist(map(paste0(dat_path,"Correll_NAIP/"),~list.files(.,pattern = "ent.tif$",full.names=T)))
   
-  load(paste0(path_out,"enviro.rda"))
-
-  #save(nests,nests_buff,file = paste0(path_out,"nest.rda"))
-  #save(dat_path,zones,area,path_out,file = paste0(path_out,"param.rda"))))
+  #read as raster layers
+  txt_homo<-map(file_list1,rast)
+  txt_corr<-map(file_list2,rast)
+  txt_entro<-map(file_list3,rast)
+}
+if(!file.exists(paste0(path_out,"Correll_NAIP/1_hom.tif"))){
 
 ## 3. a. Raster Quanitization 
 #----------------------------
@@ -192,22 +200,20 @@ for (i in 1:length(ndvi)){
 
 }
 
-
+#filename=paste0(path_out,i,"_ent_txt.tif")
 if(!file.exists(paste0(path_out,"1_hom_txt.tif"))){
   for(i in 1:length(txt_homo)){
-writeRaster(txt_homo[[i]],file=paste0(path_out,i,"_hom_txt.tif"),overwrite=T)
-writeRaster(txt_entro[[i]],file=paste0(path_out,i,"_ent_txt.tif"),overwrite=T)
-writeRaster(txt_corr[[i]],file=paste0(path_out,i,"_cor_txt.tif"),overwrite=T)
+writeRaster(txt_homo[[i]],filename=paste0("C:/Users/Emily/Documents/",i,"hom.tif"),overwrite=T)
+writeRaster(txt_entro[[i]],filename=paste0("C:/Users/Emily/Documents/ent_txt_",i,".tif"),overwrite=T)
+writeRaster(txt_corr[[i]],file=paste0("C:/Users/Emily/Documents/cor_txt_",i,".tif"),overwrite=T)
   }
 }
-  
+
 
 
 if(!file.exists(paste0(path_out,"uvvr_noOutlier.tif"))){
-  writeRaster(uvvr,file = paste0(path_out,"uvvr_mean_noOutlier.tif"),overwrite=T)
-  writeRaster(uvvr_diff,file = paste0(path_out,"uvvr_diff_noOutlier.tif"),overwrite=T)
+  writeRaster(uvvr,filename = paste0("C:/Users/Emily/Documents/uvvr_mean_noOutlier.tif"),overwrite=T)
+  writeRaster(uvvr_diff,filename = paste0("C:/Users/Emily/Documents/uvvr_diff_noOutlier.tif"),overwrite=T)
 }
 
-if(!file.exists(paste0(path_out,"nest.rda"))){
-save(nests,nests_buff,file = paste0(path_out,"nest.rda"))
-}
+
