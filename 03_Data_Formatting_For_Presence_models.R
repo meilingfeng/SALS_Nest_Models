@@ -202,7 +202,8 @@ for (i in 1:length(ndvi)){
 
 #Create an empty list to hold a summary of vegetation in nests for each regional layer (will hold a list of summary tables, one for each region)
 out_list<-list()
-
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(vg_cls[[1]]))
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(vg_cls)) {
   #select zone layer and rename raster values
@@ -228,6 +229,8 @@ veg_prop<-do.call("rbind",out_list)
 
 ## 4. b. mean UVVR ratio at each nest
 #-------------------------------
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(uvvr))
 uvvr_mean<-terra::extract(uvvr, vect(nests), bind=T)%>%
   st_as_sf()%>%
   st_drop_geometry()%>%
@@ -236,6 +239,8 @@ uvvr_mean<-terra::extract(uvvr, vect(nests), bind=T)%>%
 
 ## 4. c. Change in UVVR at each nest
 #-------------------------------
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(uvvr_diff))
 uvvr_diff2<-terra::extract(uvvr_diff, vect(nests), bind=T)%>%
   st_as_sf()%>%
   st_drop_geometry()%>%
@@ -245,7 +250,8 @@ uvvr_diff2<-terra::extract(uvvr_diff, vect(nests), bind=T)%>%
 
 ## 4. d. NDVI 
 #-------------------------------
-
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(ndvi[[1]]))
 for(i in 1:length(ndvi)) {
   #select zone layer and rename raster values
   layer<-dplyr::rename_with(ndvi[[i]], function(x){x<-'value'},.cols = everything())
@@ -267,7 +273,8 @@ ndvi2<-do.call("rbind",out_list)
 
 ## 4. e. PCA
 #-------------------------------
-
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(pca[[1]][[1]]))
 for(i in 1:length(pca)) {
   #select zone layer and rename raster values
   layer<-dplyr::rename_with(pca[[i]][[1]], function(x){x<-'value'},.cols = everything())
@@ -289,7 +296,8 @@ pca2<-do.call("rbind",out_list)
 
 ## 4. f. Homogeneity (of NDVI)
 #-------------------------------
-
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(txt_homo[[1]]))
 for(i in 1:length(txt_homo)) {
   #select zone layer and rename raster values
   layer<-dplyr::rename_with(txt_homo[[i]], function(x){x<-'value'},.cols = everything())
@@ -311,7 +319,8 @@ txt_homo2<-do.call("rbind",out_list)
 
 ## 4. g. Entropy (of NDVI)
 #-------------------------------
-
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(txt_entro[[1]]))
 for(i in 1:length(txt_entro)) {
   #select zone layer and rename raster values
   layer<-dplyr::rename_with(txt_entro[[i]], function(x){x<-'value'},.cols = everything())
@@ -334,7 +343,8 @@ txt_entro2<-do.call("rbind",out_list)
 
 ## 4. h. Correlation (of NDVI)
 #-------------------------------
-
+#set coord system of nest points to raster layer
+nests<-st_transform(nests,crs(txt_corr[[1]]))
 for(i in 1:length(txt_corr)) {
   #select zone layer and rename raster values
   layer<-dplyr::rename_with(txt_corr[[i]], function(x){x<-'value'},.cols = everything())
@@ -373,7 +383,8 @@ write.csv(final_dat_local,paste0(dat_path,"SALS_nest_vars_local.csv"),row.names 
 
 ## 5.a. Marsh Vegetation Classes
 #-------------------------------
-
+#set coord system of nest points to raster layer
+nests_buff<-st_transform(nests_buff,crs(vg_cls[[1]]))
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(vg_cls)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
@@ -418,6 +429,8 @@ colnames(veg_prop)[ncol(veg_prop)]<-"MISSING"
 
 ## 5.b. Mean UVVR 
 #-------------------------------
+#set coord system of nest points to raster layer
+nests_buff<-st_transform(nests_buff,crs(uvvr))
 uvvr_mean<-exact_extract(uvvr, nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                          summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
