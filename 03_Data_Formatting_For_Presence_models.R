@@ -270,7 +270,7 @@ ndvi2<-do.call("rbind",out_list)
 
 for(i in 1:length(pca)) {
   #select zone layer and rename raster values
-  layer<-dplyr::rename_with(pca[[i]], function(x){x<-'value'},.cols = everything())
+  layer<-dplyr::rename_with(pca[[i]][[1]], function(x){x<-'value'},.cols = everything())
   
   #extract the raster cell value at each point (ID represents order of observations in points layer)
   out_list[[i]]<-terra::extract(layer, vect(nests), bind = T)%>%
