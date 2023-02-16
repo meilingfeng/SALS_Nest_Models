@@ -15,7 +15,8 @@ library(rnaturalearth)
 
 ## Set file path to data
 # -------------------------------------------
-dat_path<-"G:/My Drive/Research/SHARP/Data/"
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 
 
@@ -23,7 +24,7 @@ dat_path<-"G:/My Drive/Research/SHARP/Data/"
 # -------------------------------------------
 
 # 1. Cleaned nest fate data
-fates<- read.csv(paste0(dat_path,"new_nest_coords_12_9_22.csv"))
+fates<- read.csv(paste0(path_out,"Intermediate_Outputs/new_nest_coords_12_9_22.csv"))
 
 # 2. Original Nest location data
 nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
@@ -165,13 +166,13 @@ plots<-terra::extract(marsh,vect(plots),bind=T)%>%
 # verify typos in arcpro
 output_shp<-dplyr::select(plots,veg.id,coord.typo)%>%
   distinct(veg.id,.keep_all = T)
-if(!(file.exists(paste0(dat_path,"Nest Locations/veg_locations_error_edits_12_26_22.shp")))){
+if(!(file.exists(paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_locations_error_edits_12_26_22.shp")))){
 st_write(output_shp,
-         paste0(dat_path,"Nest Locations/veg_locations_error_edits_12_26_22.shp"), delete_layer =T)
+         paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_locations_error_edits_12_26_22.shp"), delete_layer =T)
 }
 
 # Mark records with typos and extract them for edits
-veg_edits<-st_read(paste0(dat_path,"Nest Locations/veg_locations_error_edits_12_26_22.shp"))%>%
+veg_edits<-st_read(paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_locations_error_edits_12_26_22.shp"))%>%
   st_drop_geometry()%>%
   right_join(veg,by=c("veg_id"="veg.id"))%>%
   
@@ -527,9 +528,9 @@ plots3<-terra::extract(marsh,vect(plots2),bind=T)%>%
 output_shp<-dplyr::select(plots3,veg.id,coord.typo)%>%
   left_join(veg,by="veg.id")%>%
   distinct(veg.id,.keep_all = T)
-if(!(file.exists(paste0(dat_path,"Nest Locations/veg_edit_locations_12_26_22.shp")))){
+if(!(file.exists(paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_edit_locations_12_26_22.shp")))){
 st_write(plots2.1,
-         paste0(dat_path,"Nest Locations/veg_edit_locations_12_26_22.shp"), delete_layer =T)
+         paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_edit_locations_12_26_22.shp"), delete_layer =T)
 }
 
 #read back file with typo adjustments in arcpro
@@ -597,15 +598,15 @@ output_shp<-plots_final%>%
 #write files
   #veg data files
 st_write(output_shp,
-         paste0(dat_path,"Nest Locations/veg_locations_12_29_22.shp"), delete_layer =T)
+         paste0(path_out,"Final_outputs/Veg_Locations/veg_locations_12_29_22.shp"), delete_layer =T)
 st_write(output_shp,
-         paste0(dat_path,"Nest Locations/veg_locations_12_29_22.kml"), delete_layer =T)
+         paste0(path_out,"Final_outputs/Veg_locations/veg_locations_12_29_22.kml"), delete_layer =T)
 
-write.csv(output_csv,paste0(dat_path,"new_veg_coords_12_29_22.csv"),row.names = F)
-write.csv(veg_final,paste0(dat_path,"new_veg_coords_12_29_22_wEditflags.csv"),row.names = F)
+write.csv(output_csv,paste0(path_out,"Final_outputs/new_veg_coords_12_29_22.csv"),row.names = F)
+write.csv(veg_final,paste0(path_out,"Final_outputs/new_veg_coords_12_29_22_wEditflags.csv"),row.names = F)
 
   # adjusted nest data files
-write.csv(fates,paste0(dat_path,"new_nest_coords_01_3_23.csv"),row.names = F)
+write.csv(fates,paste0(path_out,"Final_outputs/new_nest_coords_01_3_23.csv"),row.names = F)
 
     #convert to spatial points
 plots_utm18 <- st_as_sf(filter(fates,utm.zone=="18T"& Coordinate.System=="UTM(m)"), coords = c("Easting", "Northing"), crs = utm18)%>%
@@ -622,7 +623,7 @@ plots<-rbind(plots_utm18,plots_utm19,plots_latlong)%>%
   st_transform("EPSG:26918")
 
 st_write(plots,
-         paste0(dat_path,"Nest Locations/nest_locations_01_3_23.shp"), delete_layer =T)
+         paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"), delete_layer =T)
 st_write(plots,
-         paste0(dat_path,"Nest Locations/nest_locations_01_3_23_22.kml"), delete_layer =T)
+         paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23_22.kml"), delete_layer =T)
  

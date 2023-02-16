@@ -9,9 +9,9 @@ library(GLCMTextures)
 
 ## Set file path to data and outputs
 # -------------------------------------------
-dat_path<-"D:/Data/"
+dat_path<-"D:/Nest_Models/Data/"
 #dat_path<-"/home/FCAM/mlfeng/Data/"
-path_out<-"D:/Outputs/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 
 
@@ -65,9 +65,6 @@ file_list<-unlist(map(paste0(dat_path,"Correll_Marsh_Zones"),~list.files(.,patte
 
 #read as raster layers
 vg_cls<-map(file_list,rast)
-
-#get cell area
-area<-prod(res(vg_cls[[1]]))
 
 #vegetation class definitions
 veg_class<-data.frame(value=c(1:2,4:9),

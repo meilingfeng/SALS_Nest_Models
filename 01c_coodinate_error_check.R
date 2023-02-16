@@ -11,13 +11,13 @@ library(terra)
 
 ## Set file path to data
 # -------------------------------------------
-dat_path<-"G:/My Drive/Research/SHARP/Data/"
-
+path_out<-"D:/Nest_Models/Outputs/"
+dat_path<-"D:/Nest_Models/Data/"
 
 
 ## Load data
 # -------------------------------------------
-nests<- read.csv(paste0(dat_path,"new_nest_coords_01_3_23.csv"))%>%
+nests<- read.csv(paste0(path_out,"Final_outputs/new_nest_coords_01_3_23.csv"))%>%
   dplyr::select(id,site.code,Year,Easting2=Easting,Northing2=Northing,Lat2=Lat,Long2=Long,
                 missing.location.rec,missing.site.info,
                 missing.coords,State,batch.move.cols=batch_move_DD_to_LatLong,batch.add.dec=batch_dec_addition,
@@ -25,7 +25,7 @@ nests<- read.csv(paste0(dat_path,"new_nest_coords_01_3_23.csv"))%>%
   mutate(add.nest.data = 0,
          dataset="Nests")
 
-veg<-read.csv(paste0(dat_path,"new_veg_coords_12_29_22_wEditflags.csv"))%>%
+veg<-read.csv(paste0(path_out,"Final_outputs/new_veg_coords_12_29_22_wEditflags.csv"))%>%
   dplyr::select(type,id=veg.id,site.code,Year,Easting2=Easting,Northing2=Northing,Lat2=Lat,Long2=Long,
                 missing.coords,State,batch.move.cols=batch_move_DD_to_LatLong,batch.add.dec=batch_dec_addition,
                 batch.DecMin=batch_DecMin_DD_reversed,batch.replace=replace_dat,batch.offset=coord_shift,coord.typo,add.nest.data=nest.data.add)%>%
@@ -63,8 +63,9 @@ ggsave(filename="remaining_errors_tally.png",path=paste0(dat_path,"Coordinate Ed
 # Veg data 
 # JC 2014 (Longitude is incorrect)
 
-#write.csv(sum1,paste0(dat_path,"Nest_Veg_data_status_01_3_23.csv"),row.names = F)
-
+if(!file.exists(paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/Nest_Veg_data_status_01_3_23.csv"))){
+write.csv(sum1,paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/Nest_Veg_data_status_01_3_23.csv"),row.names = F)
+}
 ## Filter for those records
 #typos<-nests%>%
 #  filter(site.code %in% c("MW","AT","OC") & Year %in% c(2014,2015))#%>%
@@ -131,7 +132,7 @@ ggplot(sum4%>%pivot_longer(-c(1:2),names_to = "edit_type", values_to = "total_re
   facet_wrap(~edit_type,scales = "fixed", ncol = 3)+
   labs(fill="Year",x="Site Code",y= "Total Records",title="Nest Plot Edits")
 
-ggsave(filename="edit_tally_nests.png",path=paste0(dat_path,"Coordinate Edit Figures"),
+ggsave(filename="edit_tally_nests.png",path=paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/Coordinate Edit Figures"),
        width=9,height=6,units="in",dpi=400)
 
 # Just random veg plot edits
@@ -156,7 +157,7 @@ ggplot(sum5%>%pivot_longer(-c(1:2),names_to = "edit_type", values_to = "total_re
   facet_wrap(~edit_type,scales = "fixed", ncol = 3)+
   labs(fill="Year",x="Site Code",y= "Total Records",title="Random Vegetation Plot Edits")
 
-ggsave(filename="edit_tally_veg.png",path=paste0(dat_path,"Coordinate Edit Figures"),
+ggsave(filename="edit_tally_veg.png",path=paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/Coordinate Edit Figures"),
        width=9,height=6,units="in",dpi=400)
 #Which records are not plotting out of the east coast area but in the wrong site?
 # SC11STSP012, JO13STSP056, 	JO13WILL182, JO12SALS049 plotting at NO in Maine
@@ -183,10 +184,10 @@ library(rnaturalearth)
 coord<- "EPSG:26918"
 
 # load nest and veg points
-nest_pts<-st_read(paste0(dat_path,"Nest Locations/nest_locations_01_3_23.shp"))%>%
+nest_pts<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
   dplyr::select(id,site_cd,Year,crd_typ)
 
-veg_pts<-st_read(paste0(dat_path,"Nest Locations/veg_locations_12_29_22.shp"))%>%
+veg_pts<-st_read(paste0(path_out,"Final_outputs/Veg_locations/veg_locations_12_29_22.shp"))%>%
   #use just the random veg points since nests are already covered in other dataset
   filter(PontTyp=="Random")%>%
   #need to use id and date for veg data identification since some plots were surveyed multiple times in a year
@@ -223,7 +224,7 @@ nestcell<- cellFromXY(marsh,nest_crds)
 # Or just load in distances for each point location generated in arc
 # a distance grid using euclidean distance and res of 100m from the uvvr layer
 # extract values to points tool
-nest_dst<-st_read(paste0(dat_path,"Nest Locations/marsh_dist_nest.shp"))%>%
+nest_dst<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/marsh_dist_nest.shp"))%>%
   dplyr::select(id,site_cd,crd_typ,Distance=RASTERVALU)%>%
   filter(crd_typ==1)%>%
   #points outside the extent of the UVVR layer, set to max distance
@@ -239,7 +240,7 @@ nest_dst<-st_read(paste0(dat_path,"Nest Locations/marsh_dist_nest.shp"))%>%
   ),
   Dataset="Nest Plot")
 
-veg_dst<-st_read(paste0(dat_path,"Nest Locations/marsh_dist_veg.shp"))%>%
+veg_dst<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/marsh_dist_veg.shp"))%>%
   #use just the random veg points since nests are already covered in other dataset
   filter(PontTyp=="Random"&crd_typ==1)%>%
   #need to use id and date for veg data identification since some plots were surveyed multiple times in a year
@@ -267,5 +268,5 @@ ggplot(dat2, aes(x = Dist_Bin,fill=Dataset)) +
   scale_x_discrete(labels=order)+
   labs(x="Distance from Marsh Border (m)", y="Number of Observations",fill="Dataset")
 
-ggsave(filename="error_distances.png",path=paste0(dat_path,"Coordinate Edit Figures"),
+ggsave(filename="error_distances.png",path=paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/Coordinate Edit Figures"),
        width=9,height=5,units="in",dpi=400)

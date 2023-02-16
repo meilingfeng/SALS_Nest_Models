@@ -15,16 +15,18 @@ library(rnaturalearth)
 
 ## Set file path to data
 # -------------------------------------------
-dat_path<-"G:/My Drive/Research/SHARP/Data/"
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 
 
 ## Load data
 # -------------------------------------------
 
-# 1. Nest fates - select nest ID and nest fate - look up unique values, could subset by known causes of failure
+## 1. Nest fates - select nest ID and nest fate
 fates<-read.csv(paste0(dat_path,"NestFates_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","fate"="UltimateNestFate")%>%
+  # add flags for each type of edit we are applying to the original data
   mutate(missing.location.rec=0,
          missing.site.info=0,
          missing.coords=0,
@@ -34,26 +36,26 @@ fates<-read.csv(paste0(dat_path,"NestFates_2001-2020.csv"),na.strings=c("","NOT 
          batch_dec_addition=0,
          batch_dec_addition_reversed=0,
          batch_move_DD_to_LatLong=0)
-#adjusted id id19051 to ID19051
+  # manually adjusted the nest id "id19051" to "ID19051"
 
-#Nest location information - select nest ID, Site code, Year, Species, Coordinate information
+  # Nest location information - select nest ID, Site code, Year, Species, Coordinate information
 nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
   #Remove records missing site and year info (these were added as filler data to merge with veg data)
   filter(!is.na(site.code)&!is.na(Year))
-#adjusted SAlS to SALS for 1 id
+  # adjusted "SAlS" to "SALS" for 1 nest id
 
 
 
-# 2. Site information - select Site code, site name, and state
+## 2. Site information - select Site code, site name, and state
+  #site info from banding SOP
 sites_sop<-read.csv(paste0(dat_path,"Sites.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("site.code"="Site_Code","Site", "State")
-
+  #site info from Kate
 sites_kate<-read.csv(paste0(dat_path,"Nest_Site_Metadata_kate.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("site.code"="SiteID", "State","Region")
-
-  #additional site info from Sam's code
+  #additional site info from Sam A's code
   sites_sam<- data.frame(site.code = c("AT", "BI", "CF", "CL", "DI", "EL", "ER", "HM", "FB", "FS", 
                                     "ID", "JC", "JO", "LU", "MN", "MQ", "MW", "Morris Island", "NC", "NO", 
                                     "OC", "PA", "PB", "PR", "SA", "SC", "SG", "SY", "WI", "NC2", 
@@ -66,18 +68,19 @@ sites_kate<-read.csv(paste0(dat_path,"Nest_Site_Metadata_kate.csv"),na.strings=c
                                   "18T", "19T", "19T", "19T", "18T", "19T", "18T", "18T", "18T", "19T", 
                                   "18T", NA, "19T", "19T", "18T", "19T", "18T", "19T", "18T", "19T", 
                                   "19T", "19T", "18T", "19T", "18T", "18T", "18T"))
-  
+  # consolidate all the site info into 1 table
 sites<-full_join(sites_sop,sites_sam,by=c("site.code","State"))%>%
   full_join(sites_kate,by=c("site.code","State"))%>%
   distinct(site.code,.keep_all = T)
 
-  # get UTM zones reported for each site
-  #Greater than 72 D Long is zone 18, less than is zone 19
+  # get UTM zones for each site
+    # Greater than 72 D Longitude is zone 18, less than that is zone 19
+    # CT is the only state split between zones 18 and 19, so we will assign CT sites once we fix the coordinates in following sections
+    # for now assign zones to sites in states that are completely within 1 zone
 sites <- sites%>%
   mutate(utm.zone=case_when(
     # RI, MA, NH, ME are all within UTM zone 19
     is.na(utm.zone) & State %in% c("RI","MA","NH","ME") ~ "19T",
-    # CT is split between 18 and 19, mostly 18 though (greater than 72 DD long is zone 18)
     # NY, NJ,VA, MD, DE are in zone 18
     is.na(utm.zone) & State %in% c("NY","NJ","VA","MD","DE") ~ "18T",
     !(is.na(utm.zone)) ~ utm.zone
@@ -88,13 +91,16 @@ sites <- sites%>%
 
 
 ## Address missing records between nest locations, fates, and sites data
-# -------------------------------------------
+# -----------------------------------------------------------------------
 
 # Not all nest location records have nest fate records
 missing_fates<-nests%>%
   filter(!(id%in%fates$id))
 nrow(missing_fates)
-write.csv(missing_fates,paste0(dat_path,"nests_missing_fatedata.csv"), row.names = F)
+
+if(!file.exists(paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/nests_missing_fatedata.csv"))){
+write.csv(missing_fates,paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/nests_missing_fatedata.csv"), row.names = F)
+}
 
 # 44 nest fates are missing location data
 missing_locations<-fates%>%
@@ -116,9 +122,9 @@ fates[fates$id%in%missing_states$id,]$missing.site.info<-1
 # Can some site names be merged?
 site_list<-data.frame(site.code=sort(unique(nests$site.code)))%>%left_join(sites,by="site.code")
 
-
-#write.csv(site_list, paste0(dat_path,"nest_site_list.csv"),row.names = F)
-
+if(!file.exists(paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/nest_site_list.csv"))){
+write.csv(site_list, paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/nest_site_list.csv"),row.names = F)
+}
 
 
 ## merge nest fates and locations
@@ -188,9 +194,9 @@ dat1<-rbind(dat3,dat1[!(dat1$id%in%dat3$id),])
 
 #2014 plotting shifted NE after conversion, slight systematic error remaining
 #look at Sam's original data files
-NJ14<-read.csv(paste0(dat_path,"Nest Locations/SESP 2011-2015.csv"))%>%
+NJ14<-read.csv(paste0(dat_path,"SESP 2011-2015.csv"))%>%
   dplyr::select(id=ID,Lat2=LAT,Long2=LONG,Year=YEAR)
-NJ14<-read.csv(paste0(dat_path,"Nest Locations/SALS 2011-2015.csv"))%>%
+NJ14<-read.csv(paste0(dat_path,"SALS 2011-2015.csv"))%>%
   dplyr::select(id=ident,Lat2=Latitude,Long2=Longitude,Year)%>%
   rbind(NJ14)%>%
   mutate(yr=substr(Year,3,4),
@@ -227,22 +233,6 @@ dat1<-dat1%>%
          Long = ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), Long+diff_long, Long),
          coord_shift= ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), 1, 0))
   
-
-#Converting DMS to DD
-#dat3<-dat2%>%
-#  filter(Easting>6700000)%>%
-#  mutate(Long=paste0(substr(Easting,1,2),"d",
-#                            substr(Easting,3,4),"m",
-#                            substr(Easting,5,6),"s",
-#                            "W"),
-#         Long=(as.numeric(char2dms(Long, chd='d', chm='m', chs='s'))),
-#         Lat=paste0(substr(Northing,1,2),"d",
-#                     substr(Northing,3,4),"m",
-#                     substr(Northing,5,6),"s",
-#                     "N"),
-#         Lat=as.numeric(char2dms(Lat, chd='d', chm='m', chs='s')))%>%
-#  rbind(dat2[!(dat2$Easting>6700000)|is.na(dat2$Easting),])
-
 
 
     # repeat DD conversion for records with lat/long reversed: At, OC, and MW in 2015
@@ -390,7 +380,7 @@ data(us_states)
 ne<-filter(us_states,REGION=="Norteast")
 
 #Marsh boundaries
-marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
+marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))#uvvr overall mean dataset that I transformed coordinate systems in Arc
 
 #plot nest sites
 tm_shape(ne) + tm_borders() +
@@ -405,8 +395,11 @@ plots<-terra::extract(marsh,vect(plots),bind=T)%>%
   dplyr::select(-uvvr_mean_utm18_2)
 
 
-# add error flag edits in Arc (removed error flags around nest points on marsh border and added to nests plotting at the wrong site) 
-error_edits<-st_read(paste0(dat_path,"Nest Locations/nest_locations_11_10_22.shp"))%>%
+# QA/QC error flag edits in Arc ** find a reproducable way of doing this in R 
+st_write(plots,
+         paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))
+# (removed error flags around nest points on marsh border and added to nests plotting at the wrong site) 
+error_edits<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))%>%
   st_drop_geometry()%>%
   dplyr::select(id,crd_typ)
 plots<-plots%>%
@@ -417,17 +410,18 @@ plots<-plots%>%
 
 
 
-#outputs
+## Writing outputs
+#--------------------------------------------
 
-#nest points shp
+#nest points shapefile and kml file
 output_shp<-dplyr::select(plots,id,coord.typo)%>%
   left_join(dplyr::select(dat1,-c("coord.typo","Lat2","Long2")),by="id")%>%
   distinct(id,.keep_all = T)
 
 st_write(output_shp,
-         paste0(dat_path,"Nest Locations/nest_locations_12_9_22.shp"), delete_layer =T)
+         paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"), delete_layer =T)
 st_write(output_shp,
-         paste0(dat_path,"Nest Locations/nest_locations_12_9_22.kml"), delete_layer =T)
+         paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.kml"), delete_layer =T)
 
 #nest coordinate info csv
 output_csv<-dplyr::select(plots,id,coord.typo)%>%
@@ -449,7 +443,10 @@ output_csv<-dplyr::select(plots,id,coord.typo)%>%
          Notes=ifelse(Notes=="",Notes,paste0(Notes,"12/9/22 EF."))
   )%>%
   dplyr::select(-c("missing.location.rec2","missing.site.info2","missing.coords2","batch_DecMin_DD_reversed2","replace_dat2","batch_dec_addition2","coord.typo2", "coord_shift2","batch_move_DD_to_LatLong2","Lat2","Long2"))
-write.csv(output_csv,paste0(dat_path,"new_nest_coords_12_9_22.csv"),row.names = F)
+
+if(!file.exists(paste0(path_out,"Intermediate_outputs/new_nest_coords_12_9_22.csv"))){
+write.csv(output_csv,paste0(path_out,"Intermediate_outputs/new_nest_coords_12_9_22.csv"),row.names = F)
+}
 
 #Site table info
 output_site<-output_csv%>%
@@ -460,7 +457,8 @@ output_site<-output_csv%>%
          is.na(utm.zone.x) ~ utm.zone.y,
          !(is.na(utm.zone.x))~utm.zone.x))%>%
   dplyr::select(-c("utm.zone.x","utm.zone.y"))
-write.csv(output_site,paste0(dat_path,"compiled_site_table_11_10_22.csv"),row.names = F)
+
+write.csv(output_site,paste0(path_out,"Final_outputs/compiled_site_table_12_9_22.csv"),row.names = F)
 
 # error tally
 t<-summarise(output_csv,
