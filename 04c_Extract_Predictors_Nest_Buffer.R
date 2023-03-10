@@ -6,33 +6,35 @@ library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(exactextractr)
 
-dat_path<-"D:/Data/"
-path_out<-"D:/Outputs/"
+## Set file path to data and outputs
+# -------------------------------------------
+dat_path<-"D:/Nest_Models/Data/"
+#dat_path<-"/home/FCAM/mlfeng/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
-if(!exists("nests")){
-  source("03a_Format_Data_Nests_and_Predictors.R")
+
+# Load all nest locations and environmental data
+if(!exists("nests_buff")){
+  source("04a_Format_Load_Data_Nests_and_Predictors.R")
 }
-
-
+#load(paste0(path_out,"Final_outputs/4c_final_files.rds"))
 #use a 30m prediction surface based on min distance between nests in 02_Check_nest_distances.R
-
 
 ## Summarize environmental data in each buffer zone (15m around each nest = 30m to match coarsest resolution of environmental data -UVVR)
 # -----------------------------------------------------------------------------------------------------------------
-
+out_list<-list()
 ## a. Marsh Vegetation Classes
 #-------------------------------
-#set coord system of nest points to raster layer
-nests_buff<-st_transform(nests_buff,crs(vg_cls[[1]]))
+area<-round(res(vg_cls[[1]])[1]^2)
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(vg_cls)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(vg_cls[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+  out_list[[i]]<-exact_extract(vg_cls[[i]], st_transform(nests_buff,crs(vg_cls[[1]])), #set coord system of nest points to raster layer
+                               function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
     #convert cell count to area by multiplying count by cell area. 
     #then calculate the proportional area of each veg class
     group_by(id)%>%
-    distinct(.keep_all = T)%>%
     mutate(area=n*area,
            prop_area=round(area/sum(area),digits=2),
            region=zones[i])%>%
@@ -41,8 +43,9 @@ for(i in 1:length(vg_cls)) {
     left_join(nests%>%st_drop_geometry(),by='id')%>%
     left_join(veg_class,by="value")%>%
     dplyr::select(-c("value","area","n"))%>%
-    distinct(.keep_all=T)%>%
-    pivot_wider(names_from= "veg_class",values_from = "prop_area")
+    distinct(id,prop_area,veg_class,.keep_all=T)%>%
+    pivot_wider(names_from= "veg_class",values_from = "prop_area")%>%
+      unnest() #removes list cols
 }
 
 #empty region dataframes indicate no SALS nests in that region
@@ -58,19 +61,18 @@ for(i in 1:length(out_list)){
 }
 
 #combine vegetation values for nests across all regions into 1 dataframe
-veg_prop<-do.call("rbind",out_list)
+veg_prop<-do.call("rbind",out_list)%>%
+  distinct(id,.keep_all=T)
 #rename the "NA" vegetation variable column (last column) to "MISSING"
-colnames(veg_prop)[ncol(veg_prop)]<-"MISSING"
-
+colnames(veg_prop)[(ncol(veg_prop))]<-"MISSING"
 
 
 
 
 ## b. Mean UVVR 
 #-------------------------------
-#set coord system of nest points to raster layer
-nests_buff<-st_transform(nests_buff,crs(uvvr))
-uvvr_mean<-exact_extract(uvvr, nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+uvvr_mean<-exact_extract(uvvr, st_transform(nests_buff,crs(uvvr)), #set coord system of nest points to raster layer
+                         function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                          summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
 uvvr_mean<-group_by(uvvr_mean,id)%>%
@@ -81,7 +83,8 @@ uvvr_mean<-group_by(uvvr_mean,id)%>%
 
 ## c. UVVR change 
 #-------------------------------
-uvvr_diff2<-exact_extract(uvvr_diff, nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+uvvr_diff2<-exact_extract(uvvr_diff, st_transform(nests_buff,crs(uvvr_diff)), #set coord system of nest points to raster layer
+                          function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                           summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
 uvvr_diff2<-group_by(uvvr_diff2,id)%>%
@@ -97,7 +100,7 @@ uvvr_diff2<-group_by(uvvr_diff2,id)%>%
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(ndvi)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(ndvi[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+  out_list[[i]]<-exact_extract(ndvi[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
@@ -108,7 +111,8 @@ for(i in 1:length(ndvi)) {
 
 #empty region dataframes indicate no SALS nests in that region
 #combine values for nests across all regions into 1 dataframe
-ndvi_buff<-do.call("rbind",out_list)
+ndvi_buff<-do.call("rbind",out_list)%>%
+  distinct(id,.keep_all=T)
 
 
 ## e. PCA
@@ -117,7 +121,7 @@ ndvi_buff<-do.call("rbind",out_list)
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(pca)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(pca[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+  out_list[[i]]<-exact_extract(pca[[i]], st_transform(nests_buff,crs(pca[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
@@ -128,7 +132,8 @@ for(i in 1:length(pca)) {
 
 #empty region dataframes indicate no SALS nests in that region
 #combine values for nests across all regions into 1 dataframe
-pca_buff<-do.call("rbind",out_list)
+pca_buff<-do.call("rbind",out_list)%>%
+  distinct(id,.keep_all=T)
 
 
 
@@ -136,20 +141,20 @@ pca_buff<-do.call("rbind",out_list)
 ## f. Homogeneity
 #-------------------------------
 #for each regional zone (1-8) along the east coast...
-for(i in 1:length(ndvi)) {
+#for(i in 1:length(ndvi)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(txt_homo[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
-                               summarize_df=T,include_cols='id')%>%
+#  out_list[[i]]<-exact_extract(txt_homo[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+#                               summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
-    group_by(id)%>%
-    mutate(weighted=n*value)%>%
-    summarise(hom_txt=round(sum(weighted,na.rm=T),digits=5))%>%
-    ungroup()
-}
+#    group_by(id)%>%
+#    mutate(weighted=n*value)%>%
+#    summarise(hom_txt=round(sum(weighted,na.rm=T),digits=5))%>%
+#    ungroup()
+#}
 
 #empty region dataframes indicate no SALS nests in that region
 #combine values for nests across all regions into 1 dataframe
-homo_buff<-do.call("rbind",out_list)
+#homo_buff<-do.call("rbind",out_list)
 
 
 
@@ -158,7 +163,7 @@ homo_buff<-do.call("rbind",out_list)
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(ndvi)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(txt_entro[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+  out_list[[i]]<-exact_extract(txt_entro[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
@@ -169,7 +174,8 @@ for(i in 1:length(ndvi)) {
 
 #empty region dataframes indicate no SALS nests in that region
 #combine values for nests across all regions into 1 dataframe
-entro_buff<-do.call("rbind",out_list)
+entro_buff<-do.call("rbind",out_list)%>%
+  distinct(id,.keep_all=T)
 
 
 
@@ -178,7 +184,7 @@ entro_buff<-do.call("rbind",out_list)
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(ndvi)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(txt_corr[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+  out_list[[i]]<-exact_extract(txt_corr[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
@@ -189,7 +195,8 @@ for(i in 1:length(ndvi)) {
 
 #empty region dataframes indicate no SALS nests in that region
 #combine values for nests across all regions into 1 dataframe
-corr_buff<-do.call("rbind",out_list)
+corr_buff<-do.call("rbind",out_list)%>%
+  distinct(id,.keep_all=T)
 
 
 
@@ -200,15 +207,15 @@ final_dat<-left_join(veg_prop,uvvr_mean, by='id')%>%
   left_join(uvvr_diff2,by='id')%>%
   left_join(ndvi_buff,by='id')%>%
   left_join(pca_buff,by='id')%>%
-  left_join(homo_buff,by='id')%>%
+  #left_join(homo_buff,by='id')%>%
   left_join(entro_buff,by='id')%>%
   left_join(corr_buff,by='id')%>%
-  dplyr::select(id,region,site,Year,fate, 
+  dplyr::select(id,bp,region,site,Year,fate, 
                 HIMARSH,LOMARSH,POOL,PHRG,MISSING,STRM,MUD,UPLND,TERRBRD,
                 uvvr_mean,uvvr_diff,
-                ndvi,pca,hom_txt,ent_txt,cor_txt)%>%
-  distinct(.keep_all = T)
+                ndvi,pca,ent_txt,cor_txt)%>%
+  distinct(id,.keep_all=T)
 
-
-write.csv(final_dat,paste0(dat_path,"SALS_nest_vars_buff15.csv"),row.names = F)
+#save(uvvr_mean,uvvr_diff2,ndvi_buff,pca_buff,entro_buff,corr_buff, file=paste0(path_out,"Final_outputs/4c_final_files.rds"))
+write.csv(final_dat,paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"),row.names = F)
 
