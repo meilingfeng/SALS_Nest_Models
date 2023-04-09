@@ -171,7 +171,7 @@ writeRaster(ndvi[[i]],paste0(path_out,"Final_outputs/Correll_NAIP/Z",i,"_zeroed_
 
 }
 #read files if they exist
-file_list1<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP/"),~list.files(.,pattern = "NDVI.tif$",full.names=T)))
+file_list1<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP/"),~list.files(.,pattern = "zeroed_NDVI.tif$",full.names=T)))
 file_list2<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP/"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
 #read as raster layers
 ndvi<-map(file_list1,rast)

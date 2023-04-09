@@ -196,6 +196,6 @@ final_dat_local<-left_join(nests,ndvi2, by='id')%>%
 final_dat_local$cor_txt[is.na(final_dat_local$cor_txt)]<-0
 
 if(!file.exists(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))){
-write.csv(st_drop_geometry(final_dat_local),paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"),row.names = F)
+write.csv(st_drop_geometry(final_dat_local),paste0(path_out,"Final_outputs/SALS_nest_vars_local2.csv"),row.names = F)
 }
 
