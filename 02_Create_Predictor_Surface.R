@@ -75,7 +75,7 @@ for(i in 1:length(ndvi_list)){
 }
 }
 
-ndvi_list<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP"),~list.files(.,pattern = "NDVI.tif$",full.names=T)))
+ndvi_list<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP"),~list.files(.,pattern = "_zeroed_NDVI.tif$",full.names=T)))
 
 if(!file.exists(paste0(path_out,"Final_outputs/Correll_NAIP/Z1_PC1.tif"))){
 pca_list<-unlist(map(paste0(dat_path,"Correll_NAIP"),~list.files(.,pattern = "PCA.tif$",full.names=T)))
