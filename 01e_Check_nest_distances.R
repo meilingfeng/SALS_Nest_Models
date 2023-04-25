@@ -10,15 +10,11 @@ library(terra)#updated version of raster package
 dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
-#parameters
-#use fail thinned data?
-thin<-T
 
-if(thin==F){
 nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020.shp"))%>%
-  rename(id=name)}else{
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_fail_thin_1m.shp"))
-  }
+  rename(id=name)
+
+
 
 ## Get Appropriate Buffer Area for Nests
 # ----------------------------------------
@@ -144,4 +140,4 @@ ggplot(nest_dists_sum,aes(x=mean_dist))+
 nests2<-nests%>%
   filter(!(id%in%dist_min2[dist_min2$min_dist>1000,]$id))
 
-st_write(nests2,paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_10_20_fail_thin_1m_dist_errors_removed.shp"),delete_layer = T)
+st_write(nests2,paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"),delete_layer = T)
