@@ -52,7 +52,7 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
   #set area outside marsh to NA
   for(i in 1:length(masks)){
     mask<-masks[[i]]
-    mask[mask==0]<-NA
+    mask[mask==0|mask==9|mask==7]<-NA
     masks[[i]]<-mask}
 
   
@@ -74,8 +74,8 @@ bg_all<-do.call("rbind",bg)
 
 # set up the plotting area for two maps
 par(mfrow=c(1,2))
-plot(!is.na(masks[[1]]), legend=FALSE)
-points(bg[[1]], cex=0.5)
+plot(!is.na(masks[[6]]), legend=FALSE)
+points(bg[[6]], cex=0.5)
 
 #write coordinates to csv
 write.csv(bg_all,paste0(path_out,"Intermediate_outputs/background_points_30m.csv"),row.names=F)
