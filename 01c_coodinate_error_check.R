@@ -39,6 +39,27 @@ dat1<-rbind(nests,veg)
 
 nrow(veg[veg$dataset=="Vegetation",])
 
+
+#how many SALS nests? in CT?
+nests_og<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+  dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
+                "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
+  #Remove records missing site and year info (these were added as filler data to merge with veg data)
+  filter(!is.na(site.code)&!is.na(Year))%>%
+  filter(Species=="SALS")
+nrow(nests_og)
+nests%>%left_join(nests_og%>%dplyr::select(id,Species),by="id")%>%
+  filter(Species=="SALS")%>%
+  summarise(n=n(),
+            error=sum(coord.typo),
+            missing.lat=sum(missing.coords))
+nests%>%left_join(nests_og%>%dplyr::select(id,Species),by="id")%>%
+  filter(Species=="SALS"&State=="CT")%>%
+  summarise(n=n(),
+            error=sum(coord.typo),
+            missing.lat=sum(missing.coords))
+
+
 ## Remaining Error Tally and Summary Plots
 #--------------------------------------------------
 sum1<-group_by(dat1,site.code,Year,dataset)%>%
