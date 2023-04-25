@@ -43,16 +43,21 @@ terms_surv<-unlist(strsplit(as.character(final_mod_surv$terms[[3]]),split=" * ",
   strsplit(split=" + ", fixed=TRUE)%>%
   unlist()
 #get rid of operators and interaction terms
-#terms_surv<-terms_surv[-1]
+terms_surv<-terms_surv[-1]
 
 #empty list to hold prediction surfaces
 glm_predict_pres<-list()
 glm_predict_surv<-list()
 
-i<-3
+
+mat_p<-list()
+mat_s<-list()
+mat_p_z1<-list()
+mat_s_z1<-list()
 
 ## 2. loop predictions through each zone
 ######
+i<-3
 for (i in 1:length(file_list_all_zones)){
   
 # a) load raster predictor layers for a particular zone
@@ -123,7 +128,8 @@ mod_preds_s[["Highmarsh"]]<-r
 
 
 # e) set areas outside marsh to NA (mask all predictors)
-mask<-mod_preds_p["Highmarsh"]
+mask<-predictors["Highmarsh"]
+mask[mask==0|mask==9|mask==7]<-NA
 preds_mask_s<-list()
 preds_mask_p<-list()
 for(j in 1:nlyr(mod_preds_s)){
@@ -144,27 +150,79 @@ names(preds_mask_p2)<-names(mod_preds_p)
 
 preds_mask_s2<-rast(preds_mask_s)
 names(preds_mask_s2)<-names(mod_preds_s)
-#convert from raster stack to dataframe
-#preds_df<-as.data.frame(preds_mask2, 
-#                        xy=T, #inlcude cell coordinates
-#                        cells=T, #include cell numbers
-#                        na.rm=NA #remove cells with NA in all layers (outside marsh)
-#                         )%>%
-#  rename(long=x,lat=y)
-#keep order in model function
-#preds_mask2<-preds_mask2[[order(terms_pres)]]
-#predict to prediction surface
-#test<-predict.glm(final_mod_pres,newdata=preds_df,type="response")
+
+#PREDICT
 glm_predict_pres[[i]]<-predict(preds_mask_p2,final_mod_pres, type="response")
 glm_predict_surv[[i]]<-predict(preds_mask_s2,final_mod_surv, type="response")
+
+
+#Write predicted values to csv
+
+
+  pres_out<-rast(list(preds_mask_p2,glm_predict_pres[[i]]))
+  names(pres_out[[nlyr(pres_out)]])<-"predictions"
+  mat_p[[i]]<-as.data.frame(terra::as.matrix(pres_out,wide=F))%>%
+    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
+  
+  surv_out<-rast(list(preds_mask_s2,glm_predict_surv[[i]]))
+  names(surv_out[[nlyr(surv_out)]])<-"predictions"
+  mat_s[[i]]<-as.data.frame(terra::as.matrix(surv_out,wide=F))%>%
+    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
+
+  
+  
+  
+  #zone 1 is too big, process it in parts
+if(i==1){
+
+n_div<-4
+dat_zone_list<-list()
+row_start<-c()
+row_end<-c()
+
+
+pres_out<-rast(list(preds_mask_p2,glm_predict_pres[[i]]))
+names(pres_out[[nlyr(pres_out)]])<-"predictions"
+
+
+surv_out<-rast(list(preds_mask_s2,glm_predict_surv[[i]]))
+names(surv_out[[nlyr(surv_out)]])<-"predictions"
+
+#divide zone into 4
+for(j in 1:n_div){
+  row_start_p[j]<-((round(nrow(pres_out)/n_div))*(j-1))+1
+  row_end_p[j]<-(round(nrow(pres_out)/n_div))*j
+  pres_out_sub<-pres_out[c(row_start_p[j]:row_end_p[j]),c(1:ncol(pres_out)),drop=F]
+  
+  row_start_s[j]<-((round(nrow(surv_out)/n_div))*(j-1))+1
+  row_end_s[j]<-(round(nrow(surv_out)/n_div))*j
+  surv_out_sub<-surv_out[c(row_start_s[j]:row_end_s[j]),c(1:ncol(surv_out)),drop=F]
+  
+  #coerce raster stack into a matrix with datasets (layers) as columns and cells as rows (wide = F will do this)
+  mat_p_z1[[j]]<-as.data.frame(terra::as.matrix(pres_out_sub,wide=F))%>%
+    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
+  
+  mat_s_z1[[j]]<-as.data.frame(terra::as.matrix(surv_out_sub,wide=F))%>%
+    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
 }
 
 
+#bind all the zone sections into one dataframe
+mat_p[[1]]<-do.call("rbind",mat_p_z1)
+mat_s[[1]]<-do.call("rbind",mat_s_z1)
+}
+  
+
+#write each zone prediction dataset to matrix file
+  write.csv(mat_p[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Placement/Z",i,"_prediction_30m_",ab_type,"_placement.csv"),row.names = F)
+  write.csv(mat_s[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Success/Z",i,"_prediction_30m_",ab_type,"_success.csv"),row.names = F)
+
 #Write rasters
-for(i in 1:length(glm_predict_pres)){
 writeRaster(glm_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_pres_preds_30m",ab_type,".tif"),overwrite=T)
 writeRaster(glm_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/z",i,"_surv_preds_30m",ab_type,".tif"),overwrite=T)
 }
+
+
 
 
 ### Model Evaluation 
@@ -173,7 +231,7 @@ writeRaster(glm_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Prediction
 for(i in 1:length(glm_predict_pres)){
 ggplot()+
     geom_spatraster(data=glm_predict_pres[[i]],aes(fill=lyr1))+
-    scale_fill_hypso_c(direction=-1)+
+    scale_fill_viridis_c()+
     theme_classic()
 ggsave(filename = paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_pres_preds_30m",ab_type,".png"),
       # width=8,height = 8,
@@ -181,21 +239,14 @@ ggsave(filename = paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i
 
 ggplot()+
   geom_spatraster(data=glm_predict_surv[[i]],aes(fill=lyr1))+
-  scale_fill_hypso_c(direction=-1)+
+  scale_fill_viridis_c()+
   theme_classic()
 ggsave(filename = paste0(path_out,"Final_outputs/Nest_Predictions/Success/z",i,"_surv_preds_30m",ab_type,".png"),
        # width=8,height = 8,
        dpi=300, units="in")
 }
 
-test<-rast(paste0(dat_path,"Correll_Marsh_Zones/Zone4_DEM_30align.tif"))
-ggplot()+
-  geom_spatraster(data=test,aes(fill=Zone4_DEM_30align))+
-  scale_fill_hypso_b(breaks=c(1:8),direction=-1)+
-  theme_classic()
-ggsave(filename = paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z4_veg_30m.png"),
-       # width=8,height = 8,
-       dpi=300, units="in")
+
 #Comparison to training data
 #for GLM, can look at how much deviance is explained, whether there are patterns in residuals, whether there are points with high leverage
 
