@@ -17,37 +17,23 @@ path_out<-"D:/Nest_Models/Outputs/"
 
 ## 1. Format Nest Observations
 # -------------------------------------
-# load nest observation shapefile
+# load cleaned focal species nest observation shapefile
 
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
-  # filter records to just SALS or species of interest
-  filter(Species=="SALS"&
-           # also filter records missing coordinate information or that have coordinate errors
-           crd_typ!=1&mssng_l_!=1&mssng_c!=1)%>%
-  # convert all coordinates to degrees (NAD83) and create Long and Lat columns
-  st_transform("EPSG:4269")%>% #"EPSG:26918"
-  mutate(bp="p", #mark as a nest presence location
-         Long = sf::st_coordinates(.)[,1],
-         Lat = sf::st_coordinates(.)[,2],
-         #create binary nest success variable for remaining records
-         fate=case_when(fate=="FLEDGED" ~ 1,
-                        fate%in%c("FLOODED","DEPREDATED","FAIL UNKNOWN","INACTIVE","NEVER HAD EGGS","NEVER HAD") ~ 0))%>%
-  dplyr:: select(name=id,latitude=Lat,longitude=Long,fate,Year,site=site_cd,bp)%>%
-  distinct(.keep_all = TRUE)
+nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))%>%
+  mutate(bp="p")%>%
+  dplyr::select(-lat_bin)
 
 # output csv file for all nest coordinates and their fate, if recorded
-if(!file.exists(paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_01_5_23.csv"))){
-write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_01_5_23.csv"),row.names=F)
+if(!file.exists(paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_04_17_23.csv"))){
+write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_04_17_23.csv"),row.names=F)
 }
 
 
-# nest points sf object
-nests<-rename(nests,id=name)
 
 #nest buffers sf object
 nests_buff<- nests%>%
   #buffer nest points by 5 meters 
-  st_buffer(dist = 5)%>%
+  st_buffer(dist = 15)%>%
   distinct(.keep_all = TRUE)
 
 
@@ -60,16 +46,23 @@ nests_buff<- nests%>%
 #load veg and background points
 source("03_background_selection.R")
 
-#filter random background points that are within 5 meters of a nest
+#filter out random background points that are within 15 meters of a nest (to make sure background points sample different habitat than nest points due to predictor resolution)
 bg_points2<-bg_points[!(st_intersects(bg_points, nests_buff) %>% lengths > 0),] #https://stackoverflow.com/questions/57014381/how-to-filter-an-r-simple-features-collection-using-sf-methods-like-st-intersect
+#and crop to nest extent
+bg_points2<-st_crop(bg_points2,nests)
+
+#filter out veg points that are within 15 meters of a nest 
+veg2<-veg[!(st_intersects(veg, nests_buff) %>% lengths > 0),]
+#and crop to nest extent
+veg2<-st_crop(veg2,nests)
 
 #make sure columns align
 names(nests)
-names(veg)
-names(bg_points)
+names(veg2)
+names(bg_points2)
 
 #add points to nest data
-nests<-rbind(nests,bg_points2,veg)%>%
+nests<-rbind(nests,bg_points2,veg2)%>%
   distinct(.keep_all = TRUE)
 
 
