@@ -12,24 +12,38 @@ library(patchwork)
 dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
-# point predictors
-dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
-  filter(bp %in% c("p","v"))%>%
-  mutate(presence=ifelse(bp=="p",1,0))
 
-# buffered predictors
-#presence
-dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
-  dplyr::select(id,HIMARSH,LOMARSH,POOL,PHRG,STRM,MUD,TERRBRD)%>% #remove UPLND, keep phrag since directly management related
-  right_join(dat,by="id")%>%
-  mutate(Highmarsh=as.factor(ifelse(veg_class=="HIMARSH",1,0)))
-#survival
-dat_s<-dat%>% 
-  filter(!(is.na(fate)))%>%
-  mutate(fate=as.factor(fate))
-
-# data from modeling
+# data and models
 source("05d_Model_Selection_Evaluation.R")
+
+
+# predicted values
+mat_p<-list()
+mat_s<-list()
+
+for(i in 1:8){
+mat_p<-read.csv(paste0(path_out,"Final_outputs/Nest Predictions/Placement/Z",i,"_prediction_30m_",ab_type,"_placement.csv"),row.names = F)
+mat_s<-read.csv(paste0(path_out,"Final_outputs/Nest Predictions/Success/Z",i,"_prediction_30m_",ab_type,"_success.csv"),row.names = F)
+}
+
+mat_p2<-rbind(mat_p)
+mat_s2<-rbind(mat_s)
+
+
+#predictors
+terms_pres<-unlist(strsplit(as.character(final_mod_pres$terms[[3]]),split=" * ", fixed=TRUE))%>%
+  strsplit(split=" + ", fixed=TRUE)%>%
+  unlist()
+#get rid of operators and interaction terms
+terms_pres<-terms_pres[-1] #remove lat (9) for now
+
+terms_surv<-unlist(strsplit(as.character(final_mod_surv$terms[[3]]),split=" * ", fixed=TRUE))%>%
+  strsplit(split=" + ", fixed=TRUE)%>%
+  unlist()
+#get rid of operators and interaction terms
+terms_surv<-terms_surv[-1]
+
+
 
 #is there a difference in means between nest/non-nest or survive/non-survive?
 
@@ -37,9 +51,9 @@ source("05d_Model_Selection_Evaluation.R")
 #----------------------------------------------------------------------------------------
 #Format data for plotting
 dat_s<- surv_train%>%
-  pivot_longer(c("ent_txt","uvvr_mean","ndvi","pca","HIMARSH","ent_txt"),names_to = "variable",values_to = "values")
+  pivot_longer(terms_surv,names_to = "variable",values_to = "values")
 dat_p<- pres_train%>%
-  pivot_longer(c("ent_txt","uvvr_mean","ndvi","pca","HIMARSH","ent_txt"),names_to = "variable",values_to = "values")
+  pivot_longer(terms_pres,names_to = "variable",values_to = "values")
 
 # 1. Plot differences
 s<-ggplot(dat_s, aes(x = as.factor(fate), y = values)) + 
@@ -116,7 +130,7 @@ p<-ggplot(dat_p, aes(x = as.factor(presence), y = values)) +
 
 
 s/p
-ggsave(paste0(path_out,"Final_outputs/habitat_comparison_surv_pres_b.png"),
+ggsave(paste0(path_out,"Final_outputs/Habitat_Comparisons/habitat_comparison_surv_pres_",ab_type,".png"),
        width=12,height=7,dpi=300,units = "in")
 
 
@@ -128,22 +142,18 @@ ggsave(paste0(path_out,"Final_outputs/habitat_comparison_surv_pres_b.png"),
 # a function takes the response ~ predictor, the categorical variable defining groups is the predictor
 # need to specify that you assume the variances of the 2 groups are equal - this tells it to do a classic 2 sample t test (can lead to type 1 error)
 
-#remove categorical predictors
-terms_surv_adj<-terms_surv[-3]
-terms_pres_adj<-terms_pres[-6]
-
 #test output tables
-output_p<-tibble(response = rep("Presence",length(terms_pres_adj)),
-       variable = terms_pres_adj,
-       n = rep(nrow(pres_train),length(terms_pres_adj)),
+output_p<-tibble(response = rep("Presence",length(terms_pres)),
+       variable = terms_pres,
+       n = rep(nrow(pres_train),length(terms_pres)),
        Levenes_p=rep(NA,length(response)),
        mean_dif = rep(NA,length(response)),
        mean_dif_CI = rep(NA_character_,length(response)),
        t_p = rep(NA,length(response))
        )
-output_s<-tibble(response = rep("Success",length(terms_surv_adj)),
-                 variable = terms_surv_adj,
-                 n = rep(nrow(surv_train),length(terms_surv_adj)),
+output_s<-tibble(response = rep("Success",length(terms_surv)),
+                 variable = terms_surv,
+                 n = rep(nrow(surv_train),length(terms_surv)),
                  Levenes_p=rep(NA,length(response)),
                  mean_dif = rep(NA,length(response)),
                  mean_dif_CI = rep(NA_character_,length(response)),
@@ -152,8 +162,8 @@ output_s<-tibble(response = rep("Success",length(terms_surv_adj)),
 
 
 #presence model variable t-tests
-  for(j in 1:length(terms_pres_adj)){
-pres_train$x<- unlist(as.vector(dplyr::select(pres_train,contains(terms_pres_adj[j]))))
+  for(j in 1:length(terms_pres)){
+pres_train$x<- unlist(as.vector(dplyr::select(pres_train,contains(terms_pres[j]))))
 # Compare the variances between groups-Levene's test (car)
 output_p[j,"Levenes_p"]<-round(leveneTest(data = pres_train, x ~ as.factor(y), center = mean)$`Pr(>F)`[1],3)# sig p value (Pr>F) indicates you reject the null hypothesis that the groups have the same variances 
 
@@ -169,12 +179,12 @@ output_p[j,"t_p"]<-round(test$p.value,3)
   }
 
 #success model variable t-tests
-for(j in 1:length(terms_surv_adj)){
-  surv_train$x<- unlist(as.vector(dplyr::select(surv_train,contains(terms_surv_adj[j]))))
+for(j in 1:length(terms_surv)){
+  surv_train$x<- unlist(as.vector(dplyr::select(surv_train,contains(terms_surv[j]))))
   # Compare the variances between groups-Levene's test (car)
   output_s[j,"Levenes_p"]<-round(leveneTest(data = surv_train, x ~ as.factor(y), center = mean)$`Pr(>F)`[1],3)# sig p value (Pr>F) indicates you reject the null hypothesis that the groups have the same variances 
   
-  if(output_p[j,"Levenes_p"]>0.05){
+  if(output_s[j,"Levenes_p"]>0.05){
     test<-t.test(x ~ y, data = surv_train, var.equal = TRUE)# gives the CI about the mean difference between groups (fail, fledge) as well as the estimated mean in each group
   }else{
     test<-t.test(x ~ y, data = surv_train, var.equal = FALSE) #welch's test
@@ -186,19 +196,12 @@ for(j in 1:length(terms_surv_adj)){
 }
 
 
-write.csv(rbind(output_p,output_s),paste0(path_out,"Final_outputs/t_test_results",ab_type,".csv"),row.names = F)
+write.csv(rbind(output_p,output_s),paste0(path_out,"Final_outputs/Habitat_Comparisons/t_test_results_",ab_type,".csv"),row.names = F)
 
 
 
 
 # is there a difference in means between high probability nest vs high probability survive?
-final_mod_pres<-glm(presence~ndvi+cor_txt+Highmarsh+HIMARSH+ent_txt+pca+uvvr_mean, 
-                    data=dat,
-                    family = binomial(link="logit"))
-
-final_mod_surv<-glm(fate~ndvi+cor_txt+Highmarsh+HIMARSH+ent_txt+pca+uvvr_mean, 
-    data=dat_s,
-    family = binomial(link="logit"))
 
 dat$pred<-final_mod_pres$fitted.values
 
@@ -247,7 +250,7 @@ s<-fviz_pca_biplot(pca_s, label = "var",
 ) +
   ggtitle("")
 p+s
-ggsave(paste0(path_out,"Final_outputs/habitat_PCA_surv_pres_b.png"),
+ggsave(paste0(path_out,"Final_outputs/Habitat_Comparisons/habitat_PCA_surv_pres_",ab_type,".png"),
        width=10,height=6,dpi=300,units = "in")
 
 
