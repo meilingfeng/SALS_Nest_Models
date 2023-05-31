@@ -3,7 +3,7 @@ library(sf)
 library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(dismo)
-source("C:/Users/mefen/OneDrive/Documents/Github/UCONN/SHARP/Functions/gridSample_sf.R")
+source("C:/Users/emily.feng/OneDrive - University of Connecticut/Research/UConn_Github/SHARP/Functions/gridSample_sf.R")
 #https://rspatial.org/sdm/1_sdm_introduction.html
 
 ### Set up
@@ -71,7 +71,7 @@ dat<-filter(dat,
               # and nest buffer contains no vegetated marsh habitat
                ((HIMARSH!=0 & LOMARSH!=0) | (!is.na(HIMARSH)&!is.na(LOMARSH)))))
 
-#table(dat2$presence)
+table(dat$presence)
 #table(dat2$veg_class)
 
 # remove rapid demo sites
