@@ -3,7 +3,8 @@ library(sf)
 library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(dismo)
-source("C:/Users/emily.feng/OneDrive - University of Connecticut/Research/UConn_Github/SHARP/Functions/gridSample_sf.R")
+library(gbm)
+source("C:/Users/mefen/OneDrive/Documents/Github/SHARP/Functions/gridSample_sf.R")
 #https://rspatial.org/sdm/1_sdm_introduction.html
 
 ### Set up
@@ -22,11 +23,11 @@ path_out<-"D:/Nest_Models/Outputs/"
 reso<-30
 
 # use random background points or veg plots as absences?
-ab_type<-"v"
-#ab_type<-"b" 
+#ab_type<-"v"
+ab_type<-"b" 
 
 # pick which predictors and response to use for models
-predictors <- "uvvr"
+#predictors <- "uvvr"
 #predictors <- "no uvvr" #removes observations mising uvvr data
 
 
@@ -36,11 +37,10 @@ veg_codes<-data.frame(veg_code=c(1:2,4:9),
 
 
 
-
-
 ## 3. Load observations with predictors
 # list of predictor files for each zone as a raster stack
 load(paste0(path_out,"predictor_files_all_zones_",reso,"m.rds"))
+all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","ent_txt","cor_txt", "tideres", "uvvr_diff","latitude") #all environmental predictor names
 
 # point predictors
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
@@ -53,11 +53,11 @@ dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
   dplyr::select(id,HIMARSH,LOMARSH,POOL,PHRG,STRM,MUD,TERRBRD)%>% #remove UPLND, keep phrag since directly management related
   right_join(dat,by="id")%>%
   mutate(veg_code=as.factor(veg_code),
-         #create binary variables for each veg class
+         #create binary variable for if nests intersect High Marsh habitat
          Highmarsh=as.factor(ifelse(veg_class=="HIMARSH",1,0)))
 
 
-
+#4326
 
 
 ### Filtering data
@@ -65,56 +65,44 @@ dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
 ## 4. Remove nests that are in non-marsh habitat and contain no marsh in their buffer
 table(dat$veg_class) # lots of nests in stream and upland classifications
              # remove if...
-dat<-filter(dat, 
-             # nest is in non-marsh
-             !((veg_class%in%c("UPLND","STRM","PHRG","TERRBRD","MUD","POOL")) &
-              # and nest buffer contains no vegetated marsh habitat
-               ((HIMARSH!=0 & LOMARSH!=0) | (!is.na(HIMARSH)&!is.na(LOMARSH)))))
+#dat<-filter(dat, 
+             # it's a nest point and not background
+            #!((bp=="p")&
+             # if point is in non-marsh
+ #            !((veg_class%in%c("UPLND","STRM","PHRG","TERRBRD","MUD","POOL")) &
+ #            # and nest buffer contains no vegetated marsh habitat
+ #              ((HIMARSH!=0 & LOMARSH!=0) | (!is.na(HIMARSH)&!is.na(LOMARSH)))))
 
 table(dat$presence)
-#table(dat2$veg_class)
+#table(dat2$veg_class) 
+# (originally 4160, now 3181 records)
 
 # remove rapid demo sites
 #don't seem to be any (would be nest without site name)
 
 
 
-
 ## 5. Remove missing values from predictors
-#data with all vegetation class and NAIP predictors
-dat_comp<-dat[complete.cases(dat[ , c("veg_code","cor_txt")]),]
+# only keep nests within the marsh vegetation layer
+dat_comp<-dat[complete.cases(dat[,all_terms]),]
+# fill in 0's for land cover proportions with NAs 
 dat_comp[,c("HIMARSH","LOMARSH","PHRG","STRM","MUD","TERRBRD")]<-dat_comp[,c("HIMARSH","LOMARSH","PHRG","STRM","MUD","TERRBRD")]%>%
   replace(is.na(.),0)
 
-#data with all predictors including UVVR
-dat_comp_all<-dat_comp[complete.cases(dat_comp[ , c("uvvr_mean")]),]
 
 
+## 6. divide into nest presence and nest suvival datasets
+pres_dat<-dat_comp
+surv_dat<-dat_comp[!is.na(dat_comp$fate),] #filter just the nests with known fates
 
-
-## 6. pick which predictors to use for models
-
-# don't use UVVR data (increases data availability)
-if(predictors=="no uvvr"){
-  pres_dat<-dat_comp
-  surv_dat<-dat_comp[!is.na(dat_comp$fate),] #filter just the nests with known fates
-}
-
-# use UVVR data (limits data availability by more than half)
-if(predictors=="uvvr"){
-  pres_dat<-dat_comp_all
-  surv_dat<-dat_comp_all[!is.na(dat_comp_all$fate),] #filter just the nests with known fates
-}
 
 
 
 
 
 ## 7. Check for balance among sample groups 
-
 # Remove Years with less than 5 observations
 yr_n<-summarise(group_by(pres_dat,Year),count=n())
-pres_dat<-filter(pres_dat,is.na(Year)|Year!=2010)
 
 #remove sites with less than 5 observations
 site_n<-summarise(group_by(pres_dat,site),count=n())
@@ -124,17 +112,15 @@ surv_dat<-filter(surv_dat,(is.na(site)|surv_dat$site %in% site_n[site_n$count>=5
 
 
 # Check Class Balance
-# balancing can help machine learning models
+# balancing can help machine learning models - both above 0.2 prevalance 
 
-#look at prevelance of nest fledge to nest fail
-addmargins(table(dat$fate))
-#663/1745 nest successes
+#look at prevalence of nest fledge to nest fail
+addmargins(table(surv_dat$fate));sum(surv_dat$fate)/nrow(surv_dat)
+
+# prevalence of presence to background
+addmargins(table(pres_dat$presence)); sum(pres_dat$presence)/nrow(pres_dat)
 
 
-dat%>%
-  filter(!is.na(fate))%>%
-  summarize(pr_success=sum(fate,na.rm=T)/n())
-#nest success relative frequency for the whole dataset is 0.32 (32%)
 
 success_site<-dat%>%group_by(site)%>%
   filter(!is.na(fate))%>%
@@ -159,10 +145,10 @@ mean(success_site$pr_success)
 # since we are using multi-year data, some nests might be frequently seen in similar locations
 # might be good to thin some of these out
 # How are observations distributed across marsh sites?
-n_nest_per_site<-summarise(group_by(dat,site),n_nests=n())
+n_nest_per_site<-summarise(group_by(dat,site),n_nests=n())%>%filter(!(is.na(site)))
 hist(n_nest_per_site$n_nests) 
-sum(n_nest_per_site[n_nest_per_site$n_nests<251,]$n_nests)/nrow(dat)
-# 70% of sites have 250 or less nest observations, but a couple have more than 300 observations.
+length(n_nest_per_site[n_nest_per_site$n_nests<251,]$n_nests)/nrow(n_nest_per_site)
+#96% of sites have 250 or less nest observations, but a couple have more than 300 observations.
 
 #create lat bins
 n_nest_per_site<-dat%>%
@@ -219,12 +205,12 @@ r <- rast(points)
 r<-terra::project(r,"EPSG:26918")
 nests_m<-st_transform(points,"EPSG:26918")
 
-# set the resolution of the cells to 1 m
-res(r) <- 1
+# set the resolution of the cells to 5 m
+res(r) <- 5
 # expand (extend) the extent of the RasterLayer a little
 r <- extend(r, ext(r)+10)
 
-# thin nest fails down to 1 nest per meter
+# thin nest fails down to 1 nest per 5 meters
 fails<-nests_m%>%
   filter(fate==0)
 
@@ -238,7 +224,7 @@ fails$Northing = sf::st_coordinates(fails)[,2]
 fails_ss<- filter(fails,(Easting%in%nest_thin[,1]&Northing%in%nest_thin[,2]))%>%
   distinct(geometry,.keep_all = T)
 
-#number of nest records removed N=160
+#number of nest records removed N=211
 nrow(fails)-nrow(fails_ss)
 
 #recombine subset fails and fledges
@@ -251,13 +237,11 @@ ggplot()+
 
 
 
+#balance survival data
+surv_dat<-surv_dat%>%
+  filter(fate==1|id%in%fails_ss$id)
 
-#balance in responses
-pres_ratio<-table(pres_dat$presence)
-pres_ratio[2]/pres_ratio[1]
-
-surv_ratio<-table(surv_dat$fate)
-surv_ratio[2]/surv_ratio[1]
+table(surv_dat$fate);sum(surv_dat$fate)/nrow(surv_dat)
 
 
 
@@ -279,7 +263,7 @@ table(surv_dat$fate,surv_dat$group)
 
 
 
-# set constain response variable name
+# set a constant response variable name
 pres_dat$y<-pres_dat$presence
 
 surv_dat$y<-surv_dat$fate
