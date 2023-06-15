@@ -26,7 +26,7 @@ path_out<-"D:/Nest_Models/Outputs/"
 source("C:/Users/mefen/OneDrive/Documents/Github/UCONN/SHARP/Functions/randomPoints.R")
 
 #nest data
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_10_20_fail_thin_1m_dist_errors_removed.shp"))
+nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))
 
 
 
@@ -90,10 +90,11 @@ pca_list<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP"),~list.files(.
 #Precipitation
 precip<-paste0(dat_path,"Precip/PRISM_ppt_30yr_normal_800mM4_annual_bil.bil")
 
-
+# Tidal restrictions
+tideres<-paste0(dat_path,"DSL_tidal_restrictions/tideres_2020_v5.0.tif")
 
 #combine data that are at the full extent
-file_list1<-c(uvvr_dif,uvvr_mean,precip)
+file_list1<-c(uvvr_dif,uvvr_mean,precip,tideres)
 
 #combine data that are at zone extents
 files2<-list(file_list,cor_list,ent_list,ndvi_list,pca_list)
@@ -344,8 +345,8 @@ all_files<-c(file_list2_align,file_list1_align,hi_align,lo_align)
 ids<-map(all_files[c(1:8)],rast)
 for(i in 1:length(ids)){
   id<-ids[[i]]
-  id[id>0]<-c(1:ncell(id[id>0]))
-  id[id==0]<-NA
+  id[!(id%in%c(0,7,9))]<-c(1:ncell(id[!(id%in%c(0,7,9))])) #remove marsh buffer zones
+  id[id%in%c(0,7,9)]<-NA
   ids[[i]]<-id}
 
 
@@ -366,15 +367,15 @@ for(i in seq(1,length(all_files),by=8)){
   dat_zone<-rast(unlist(file_list_zone))
   dat_zone<-rast(list(dat_zone,ids[[j]]))
   dat_zone<-mask(dat_zone,ids[[j]])
-  names(dat_zone)<-c("vg_clss","cor_txt","ent_txt","NDVI","PC1","uvvr_diff","uvvr_mean","precip","himarsh","lomarsh","id")
-  mat[[j]]<-as.data.frame(terra::as.matrix(dat_zone,wide=F))%>%
+  names(dat_zone)<-c("vg_clss","cor_txt","ent_txt","NDVI","PC1","uvvr_diff","uvvr_mean","precip","tideres","himarsh","lomarsh","id")
+  mat[[j]]<-as.data.frame(terra::as.matrix(dat_zone[-c(3,6,8,10)],wide=F))%>%#remove predictors not being used (cor, uvvr_diff, precip, lomarsh)
     mutate(id=paste0(id,"z",j))%>%
     filter(vg_clss!="NaN")
   file_list_all_zones[[j]]<-file_list_zone
 }
 
 
-#zone 1 is too big, process it in 2 parts
+#zone 1 is too big, process it in parts
 n_div<-4
 dat_zone_list<-list()
 row_start<-c()
@@ -394,17 +395,17 @@ file_list_zone<-list()
   #set all cells outside the marsh to NA
   dat_zone<-mask(dat_zone,ids[[1]])
   #label the datasets
-  names(dat_zone)<-c("vg_clss","cor_txt","ent_txt","NDVI","PC1","uvvr_diff","uvvr_mean","precip","himarsh","lomarsh","id")
-  #divide zone into 4
+  names(dat_zone)<-c("vg_clss","cor_txt","ent_txt","NDVI","PC1","uvvr_diff","uvvr_mean","precip","tideres","himarsh","lomarsh","id")
+  #divide zone into parts
   for(i in 1:n_div){
    row_start[i]<-((round(nrow(dat_zone)/n_div))*(i-1))+1
    row_end[i]<-(round(nrow(dat_zone)/n_div))*i
   }
   for(i in 1:n_div){
-  dat_zone_sub<-dat_zone[c(row_start[i]:row_end[i]),c(1:ncol(dat_zone)),drop=F]
+  dat_zone_sub<-dat_zone[c(row_start[i]:row_end[i]),c(1:ncol(dat_zone)),drop=F] # if it throws an error, might need to sub 1 from the last row end
   
   #coerce raster stack into a matrix with datasets (layers) as columns and cells as rows (wide = F will do this)
-  dat_zone_list[[i]]<-as.data.frame(terra::as.matrix(dat_zone_sub,wide=F))%>%
+  dat_zone_list[[i]]<-as.data.frame(terra::as.matrix(dat_zone_sub[-c(3,6,8,10)],wide=F))%>% #remove variables we arent using
     mutate(id=paste0(id,"z1"))%>%
     #remove cells outside the marsh boundary
     filter(vg_clss!="NaN")
