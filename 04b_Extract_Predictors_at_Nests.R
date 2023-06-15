@@ -181,6 +181,16 @@ precip2<-terra::extract(precip, vect(st_transform(nests,crs(precip))), bind=T)%>
   st_drop_geometry()%>%
   dplyr::select(id,precip=PRISM_ppt_30yr_normal_800mM4_annual_bil)
 
+## j. Tidal Restrictions
+#--------------------------------
+tideres<- rast(paste0(dat_path,"DSL_tidal_restrictions/tideres_2020_v5.0.tif"))%>%
+  dplyr::rename_with(function(x){x<-'tideres'},.cols = everything()) 
+
+tideres2<-terra::extract(tideres, vect(st_transform(nests,crs(tideres))), bind=T)%>%
+  st_as_sf()%>%
+  st_drop_geometry()%>%
+  dplyr::select(id,tideres)
+
 ### join NDVI, PCA, Texture, UVVR, and Proportion of vegetation classes at each nest into 1 table *Fix homogeneity and add precipitation
 #---------------------------------------------------------------------------------------
 final_dat_local<-left_join(nests,ndvi2, by='id')%>%
@@ -191,6 +201,7 @@ final_dat_local<-left_join(nests,ndvi2, by='id')%>%
   left_join(txt_corr2,by='id')%>%
   left_join(dplyr::select(veg_prop,-latitude,-longitude,-bp),by='id')%>%
   left_join(precip2,by='id')%>%
+  left_join(tideres2,by='id')%>%
   #dplyr::select(id,ndvi,hom_txt,ent_txt,cor_txt)%>%
   distinct(id,.keep_all = T)
 final_dat_local$cor_txt[is.na(final_dat_local$cor_txt)]<-0
