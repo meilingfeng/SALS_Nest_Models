@@ -32,12 +32,12 @@ source("05b_Collinearity_Outliers.R") #remove collinearity in models
 # a) variograms https://csegrecorder.com/articles/view/the-variogram-basics-a-visual-intro-to-useful-geostatistical-concepts 
 
 #get residuals
-pres_train$res<-mod_list_pres[[3]]$residuals  
-surv_train$res<-mod_list_surv[[3]]$residuals 
+pres_dat$res<-mod_list_pres[[3]]$residuals  
+surv_dat$res<-mod_list_surv[[3]]$residuals 
 
 # spatial autocorrelation
-dat2<-st_as_sf(surv_train, coords=c("longitude","latitude"))
-dat3<-st_as_sf(surv_train, coords=c("longitude","latitude"))
+dat2<-st_as_sf(surv_dat, coords=c("longitude","latitude"))
+dat3<-st_as_sf(surv_dat, coords=c("longitude","latitude"))
 
 
 gram1<-variogram(res~1,data=dat2)  #filter(dat2,site=="ER")
@@ -124,7 +124,7 @@ p2<-ggplot(pres_dat,aes(x=HIMARSH,y=uvvr_mean,group=as.factor(y)))+
 
 
 p1/p2
-ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_interactions_placement.png"), width = 7, height = 10, dpi = "retina")
+ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_interactions_placement_bp.png"), width = 7, height = 10, dpi = "retina")
 
 
 ggplot(surv_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+

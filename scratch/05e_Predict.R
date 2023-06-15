@@ -129,7 +129,7 @@ mod_preds_s[["Highmarsh"]]<-r
 
 # e) set areas outside marsh to NA (mask all predictors)
 mask<-predictors["Highmarsh"]
-mask[mask==0|mask==9|mask==7]<-NA
+mask[mask==0|mask==9|mask==7|mask==8]<-NA
 preds_mask_s<-list()
 preds_mask_p<-list()
 for(j in 1:nlyr(mod_preds_s)){

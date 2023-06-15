@@ -11,7 +11,7 @@ library(data.table)
 
 ### Set up
 # -------------------------------------------
-source("05c_candidate_models.R")  
+source("05b_Regression_Model_Selection.R")  
   
 ## Model Evaluation
 #---------------------------------------------------
@@ -20,31 +20,27 @@ source("05c_candidate_models.R")
 #SSB = 1 is no bias, close to zero is a lot of bias
 
 
-pres<-filter(pres_dat,presence==1)%>%
-  dplyr::select(longitude,latitude)
-backgr<-filter(pres_dat,presence==0)%>%
-  dplyr::select(longitude,latitude)
-set.seed(0)
-nr <- nrow(pres)
-s <- sample(nr, 0.25 * nr)
-p_train <- pres[-s, ]
-p_test <- pres[s, ]
-nr <- nrow(backgr)
-set.seed(9)
-s <- sample(nr, 0.25 * nr)
-b_train <- backgr[-s, ]
-b_test <- backgr[s, ]
+pres<-filter(pres_dat,y==1)%>%
+  dplyr::select(longitude,latitude,group)
+backgr<-filter(pres_dat,y==0)%>%
+  dplyr::select(longitude,latitude,group)
+
+p_train <- pres[pres$group!=1, ]
+p_test <- pres[pres$group==1, ]
+
+b_train <- backgr[backgr$group!=1, ]
+b_test <- backgr[backgr$group==1, ]
 
 sb <- ssb(p_test, b_test, p_train)
 sb[,1] / sb[,2]
 
 #0.4 not great but not terrible
 
-#i <- pwdSample(p_test, b_test, p_train, n=1, tr=0.1)
-#p_test_pwd <- p_test[!is.na(i[,1]), ]
-#b_test_pwd <- b_test[na.omit(as.vector(i)), ]
-#sb_pwd <- ssb(p_test_pwd, b_test_pwd, p_train)
-#sb[,1] / sb[,2]
+i <- pwdSample(p_test, b_test, p_train, n=1, tr=0.1)
+p_test_pwd <- p_test[!is.na(i[,1]), ]
+b_test_pwd <- b_test[na.omit(as.vector(i)), ]
+sb_pwd <- ssb(p_test_pwd, b_test_pwd, p_train)
+sb[,1] / sb[,2]
 
 
 

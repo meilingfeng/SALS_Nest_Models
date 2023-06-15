@@ -9,14 +9,6 @@ library(AICcmodavg)
 # -------------------------------------------
 source("05a_Set_Model_Parameters.R")
 
-#check which parameters are being used
-#using subset of data with UVVR? or All data using just NAIP veg predictors?
-predictors
-#using background points or random veg points as absences?
-ab_type
-
-
-
 
 ## Look for outliers in X and Y and check distributions
 #-------------------------------------------------------------------
@@ -33,23 +25,20 @@ ab_type
 
 
 #list all predictor variables in the full model
-vars<-c(uvvr_mean,ndvi,HIMARSH,pca,ent_txt,cor_txt)
-
-
-pres_preds<-pres_train[,vars]
-surv_preds<-surv_train[,vars]
+pres_preds<-pres_dat[,all_terms]
+surv_preds<-surv_dat[,all_terms]
 
 # can cause over dispersion in poisson glms
 # when outcome is binary, outliers are better handled
 
 #Boxplot, histogram, scatterplot are graphical tools for outlier detection
 
-for(i in 1:(length(vars))){
+for(i in 1:(length(all_terms))){
   par(mfrow = c(1, 3),mar=c(5,4,7,2)) #bottom, left, top, right
   hist(pres_preds[,i], main = "Histogram")
   boxplot(pres_preds[,i], main = "Boxplot")
   qqnorm(pres_preds[,i], main = "Normal Q-Q plot")
-  mtext(paste0(vars[i]), side = 3, line = - 2, outer = TRUE)
+  mtext(paste0(all_terms[i]), side = 3, line = - 2, outer = TRUE)
 }
 
 
