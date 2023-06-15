@@ -30,31 +30,16 @@ write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fat
 
 
 
-#nest buffers sf object
-nests_buff<- nests%>%
-  #buffer nest points by 5 meters 
-  st_buffer(dist = 15)%>%
-  distinct(.keep_all = TRUE)
-
-
-
-
-
 
 ## 2. Add random veg and background points to nest data
 # --------------------------------------------------------------------------
 #load veg and background points
 source("03_background_selection.R")
 
-#filter out random background points that are within 15 meters of a nest (to make sure background points sample different habitat than nest points due to predictor resolution)
-bg_points2<-bg_points[!(st_intersects(bg_points, nests_buff) %>% lengths > 0),] #https://stackoverflow.com/questions/57014381/how-to-filter-an-r-simple-features-collection-using-sf-methods-like-st-intersect
-#and crop to nest extent
-bg_points2<-st_crop(bg_points2,nests)
-
-#filter out veg points that are within 15 meters of a nest 
-veg2<-veg[!(st_intersects(veg, nests_buff) %>% lengths > 0),]
-#and crop to nest extent
-veg2<-st_crop(veg2,nests)
+# crop to nest extent
+#bg_points2<-st_crop(bg_points,nests)%>%mutate(Region=NA)
+bg_points2<-bg_points# dont need to for bg since we selected only from zones with nests
+veg2<-st_crop(veg,nests)
 
 #make sure columns align
 names(nests)
@@ -65,15 +50,11 @@ names(bg_points2)
 nests<-rbind(nests,bg_points2,veg2)%>%
   distinct(.keep_all = TRUE)
 
-
 #nest and background buffers sf object
 nests_buff<- nests%>%
   #buffer nest and background points by 15 meters to match largest resolution of environmental data (30m resolution)
   st_buffer(dist = 15)%>%
   distinct(.keep_all = TRUE)
-
-
-
 
 
 
@@ -177,6 +158,8 @@ pca<-map(file_list2,rast)
 
 ## Environmental Predictor 5: angle to horizon line? Measure of tall surrounding topography or objects? 
 
+
+## Environmental Predictor 6: tidal restrictions
 
 
 
