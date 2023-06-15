@@ -181,7 +181,7 @@ if(predict.surf==T){
 if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",1,"_pres_BRTpreds_30m",ab_type,".tif"))){
 
 #Predict across each zone
-for (i in 1:length(file_list_all_zones)){
+for (i in 2:length(file_list_all_zones)){
   
   # a) load raster predictor layers for a particular zone
   predictors<-rast(unlist(file_list_all_zones[[i]]))
@@ -230,11 +230,11 @@ for (i in 1:length(file_list_all_zones)){
   if(i!=1){
   pres_out<-rast(list(preds_mask2,brt_predict_pres[[i]]))
   names(pres_out[[nlyr(pres_out)]])<-"predictions"
-  mat_p[[i]]<-as.data.frame(terra::as.matrix(pres_out,wide=F))%>%
-    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-  
   surv_out<-rast(list(preds_mask2,brt_predict_surv[[i]]))
   names(surv_out[[nlyr(surv_out)]])<-"predictions"
+  
+  mat_p[[i]]<-as.data.frame(terra::as.matrix(pres_out,wide=F))%>%
+    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
   mat_s[[i]]<-as.data.frame(terra::as.matrix(surv_out,wide=F))%>%
     mutate(id=paste0(seq(1,nrow(.),1),"z",i))
   }
@@ -244,9 +244,10 @@ for (i in 1:length(file_list_all_zones)){
     
     n_div<-4
     dat_zone_list<-list()
-    row_start<-c()
-    row_end<-c()
-    
+    row_start_p<-c()
+    row_end_p<-c()
+    row_start_s<-c()
+    row_end_s<-c()
     
     pres_out<-rast(list(preds_mask2,brt_predict_pres[[i]]))
     names(pres_out[[nlyr(pres_out)]])<-"predictions"
