@@ -6,6 +6,11 @@ library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(exactextractr)
 
+#####################################################################################################################################
+## Summarize environmental data in each buffer zone (15m around each nest = 30m to match coarsest resolution of environmental data)
+######################################################################################################################################
+
+
 ## Set file path to data and outputs
 # -------------------------------------------
 dat_path<-"D:/Nest_Models/Data/"
@@ -17,12 +22,12 @@ path_out<-"D:/Nest_Models/Outputs/"
 if(!exists("nests_buff")){
   source("04a_Format_Load_Data_Nests_and_Predictors.R")
 }
-#load(paste0(path_out,"Final_outputs/4c_final_files.rds"))
-#use a 30m prediction surface based on min distance between nests in 02_Check_nest_distances.R
 
-## Summarize environmental data in each buffer zone (15m around each nest = 30m to match coarsest resolution of environmental data -UVVR)
-# -----------------------------------------------------------------------------------------------------------------
+
 out_list<-list()
+
+## Summarize predictors in buffers
+#---------------------------------------------------
 ## a. Marsh Vegetation Classes
 #-------------------------------
 area<-round(res(vg_cls[[1]])[1]^2)
@@ -138,26 +143,6 @@ pca_buff<-do.call("rbind",out_list)%>%
 
 
 
-## f. Homogeneity
-#-------------------------------
-#for each regional zone (1-8) along the east coast...
-#for(i in 1:length(ndvi)) {
-  #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-#  out_list[[i]]<-exact_extract(txt_homo[[i]], nests_buff, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
-#                               summarize_df=T,include_cols='id')%>%
-    #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
-#    group_by(id)%>%
-#    mutate(weighted=n*value)%>%
-#    summarise(hom_txt=round(sum(weighted,na.rm=T),digits=5))%>%
-#    ungroup()
-#}
-
-#empty region dataframes indicate no SALS nests in that region
-#combine values for nests across all regions into 1 dataframe
-#homo_buff<-do.call("rbind",out_list)
-
-
-
 ## g. Entropy
 #-------------------------------
 #for each regional zone (1-8) along the east coast...
@@ -207,7 +192,6 @@ final_dat<-left_join(veg_prop,uvvr_mean, by='id')%>%
   left_join(uvvr_diff2,by='id')%>%
   left_join(ndvi_buff,by='id')%>%
   left_join(pca_buff,by='id')%>%
-  #left_join(homo_buff,by='id')%>%
   left_join(entro_buff,by='id')%>%
   left_join(corr_buff,by='id')%>%
   dplyr::select(id,bp,region,site,Year,fate, 

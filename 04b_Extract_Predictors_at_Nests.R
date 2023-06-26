@@ -3,24 +3,27 @@ library(tidyverse)
 library(tidyterra)
 library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
-library(tmap)
 library(exactextractr)
+
+
+#############################################################
+## Summarize environmental predictors at nest points
+#############################################################
+
+
 
 ## Set file path to data and outputs
 # -------------------------------------------
 dat_path<-"D:/Nest_Models/Data/"
-#dat_path<-"/home/FCAM/mlfeng/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
 
-# Load all nest locations and environmental data
+# Load all nest observations and environmental predictor data
 if(!exists("nests")){
   source("04a_Format_Load_Data_Nests_and_Predictors.R")
 }
 
 
-## Summarize at nest points
-# ---------------------------------------------
 
 ## a. Marsh Vegetation Classes
 #-------------------------------
@@ -109,26 +112,6 @@ pca2<-do.call("rbind",out_list)
 
 
 
-## f. Homogeneity (of NDVI)
-#-------------------------------
-#for(i in 1:length(txt_homo)) {
-  #select zone layer and rename raster values
-#  layer<-dplyr::rename_with(txt_homo[[i]], function(x){x<-'value'},.cols = everything())
-  
-#  #extract the raster cell value at each point (ID represents order of observations in points layer)
-#  out_list[[i]]<-terra::extract(layer, vect(st_transform(nests,crs(txt_homo[[1]]))), bind = T)%>%
-    #join additional attributes
-#    st_as_sf()%>%
-#    st_drop_geometry()%>%
-#    filter(!is.na(value))%>%
-#    dplyr::select(id,hom_txt=value)
-#}
-
-  #empty region dataframes indicate no SALS nests in that region
-
-  #combine NDVI values for nests across all regions into 1 dataframe
-#txt_homo2<-do.call("rbind",out_list)
-
 
 ## g. Entropy (of NDVI)
 #-------------------------------
@@ -172,26 +155,26 @@ for(i in 1:length(txt_corr)) {
 txt_corr2<-do.call("rbind",out_list)
 
 
+
 ## i. Precipitation
 #-------------------------------
-precip<-rast(paste0(dat_path,"Precip/PRISM_ppt_30yr_normal_800mM4_annual_bil.bil"))
-
 precip2<-terra::extract(precip, vect(st_transform(nests,crs(precip))), bind=T)%>%
   st_as_sf()%>%
   st_drop_geometry()%>%
-  dplyr::select(id,precip=PRISM_ppt_30yr_normal_800mM4_annual_bil)
+  dplyr::select(id,precip=focal_mean)
+
+
 
 ## j. Tidal Restrictions
 #--------------------------------
-tideres<- rast(paste0(dat_path,"DSL_tidal_restrictions/tideres_2020_v5.0.tif"))%>%
-  dplyr::rename_with(function(x){x<-'tideres'},.cols = everything()) 
-
 tideres2<-terra::extract(tideres, vect(st_transform(nests,crs(tideres))), bind=T)%>%
   st_as_sf()%>%
   st_drop_geometry()%>%
   dplyr::select(id,tideres)
 
-### join NDVI, PCA, Texture, UVVR, and Proportion of vegetation classes at each nest into 1 table *Fix homogeneity and add precipitation
+
+
+### join NDVI, PCA, Texture, UVVR, and vegetation classes at each nest into 1 table
 #---------------------------------------------------------------------------------------
 final_dat_local<-left_join(nests,ndvi2, by='id')%>%
   left_join(pca2,by='id')%>%
