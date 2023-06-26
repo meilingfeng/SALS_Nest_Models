@@ -5,20 +5,22 @@ library(terra)
 library(sf)
 library(lubridate)
 
-reso<-30
+
 #file path names
 dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
+
+reso<-30
 bg<-list()
 
-#functions
-#source("C:/Users/mefen/OneDrive/Documents/Github/UCONN/SHARP/Functions/randomPoints_terra_sf.R")
 
-### NOTE #####
+##################################### NOTE ##############################################################
 # run this code through the source in 04a_Format_Load_Data_Nests_and Predictors.R
+# Loads random vegetation plots and generates random background points as 2 options for pseudo nest absences
+#########################################################################################################
 
 
-## 1. Use random veg plots in each zone
+## 1. Load random veg plots in each zone
 #----------------------------------------------------------------------------
 veg<-st_read(paste0(path_out,"Final_outputs/Veg_locations/veg_locations_12_29_22.shp"))%>%
   filter(PontTyp=="Random",
@@ -52,9 +54,6 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
   for(i in 1:length(file_list_all_zones)){
   masks[[i]]<-raster(file_list_all_zones[[i]][[1]])
   }
-
-
-  
   
 # b) set area outside marsh and cells with nests to NA
   for(i in 1:length(masks)){
@@ -65,15 +64,15 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
     }
 
 # c) Give each cell a probability of being selected for background
-  # load nest observation shapefile
+  # load the all species nest observation shapefile
   sampling<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
     # filter records missing coordinate information or that have coordinate errors
     filter(crd_typ!=1&mssng_l_!=1&mssng_c!=1)%>%
     # convert all coordinates to degrees (NAD83) and create Long and Lat columns
     st_transform("EPSG:4269")
   
-  # give each non NA cell a probability of random selection
-  # cells that have more SHARP nest points having greater weight (probability of selection)
+  # give each non NA cell (tidal marsh cells) a probability of random selection
+  # cells that have more SHARP nest points (greater sampling intensity) having greater weight (probability of selection based on sampling bias)
   for(i in 1:length(masks)){
     mask<-masks[[i]]
   # Get a count of total SHARP survey points in each cell to assign sampling effort weights
@@ -110,7 +109,7 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
   
   for(i in n$Region){
     mask<-masks[[i]]
-  # adjustment that accounts for the total non-NA cells to sample from
+  # adjustment that accounts for the total non-NA cells to sample from (number of available cells divided by number of needed points)
     tf<-round(ncell(mask[!is.na(mask)])/n[n$Region==i,]$n)
   # set seed to assure that the examples will always have the same random sample.
   set.seed(1963)
@@ -118,25 +117,21 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
     mutate(region=i,
           bp="b") #mark as a background location
   }
-
+  # bind all the background points across zones together
   bg_all<-do.call("rbind",bg)
 
-#And inspect the results by plotting
-
-# set up the plotting area for two maps
-par(mfrow=c(1,2))
-plot(!is.na(masks[[4]]), legend=FALSE)
-points(bg[[4]], cex=0.5)
 
 #write coordinates to csv
 write.csv(bg_all%>%mutate(Year=NA,site=NA,fate=NA,id=paste0("b",c(1:nrow(.)),"r",region)),
           paste0(path_out,"Intermediate_outputs/background_points_30m.csv"),row.names=F)
 }
 
+
+
 #load background point coordinates
 bg_all<-read.csv(paste0(path_out,"Intermediate_outputs/background_points_30m.csv"))
 
-#make background points sf shapefile
+#make background points an sf shapefile
 bg_points<-st_as_sf(bg_all,coords=c("x","y"),crs="EPSG:26918")%>%
   st_transform("EPSG:4269")%>%
   mutate(longitude=sf::st_coordinates(.)[,1],

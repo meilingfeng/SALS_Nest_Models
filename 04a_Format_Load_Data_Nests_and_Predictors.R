@@ -3,9 +3,14 @@ library(tidyverse)
 library(tidyterra)
 library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
-library(tmap)
-library(exactextractr)
-library(GLCMTextures)
+
+
+#################################################################################################
+# Combine nest data and background data into one observation dataset
+# Create a buffered version of the observation dataset
+# load the environmental predictors at their original resolutions to sample at the observation points
+#################################################################################################
+
 
 ## Set file path to data and outputs
 # -------------------------------------------
@@ -23,9 +28,9 @@ nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_202
   mutate(bp="p")%>%
   dplyr::select(-lat_bin)
 
-# output csv file for all nest coordinates and their fate, if recorded
-if(!file.exists(paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_04_17_23.csv"))){
-write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_04_17_23.csv"),row.names=F)
+# output a csv file for nest coordinates and their fate, if recorded
+if(!file.exists(paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_06_21_23.csv"))){
+write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_06_21_23.csv"),row.names=F)
 }
 
 
@@ -59,7 +64,7 @@ nests_buff<- nests%>%
 
 
 
-## 3. Load environmental data at their original resolutions
+## 3. Load buffered environmental data at their original resolutions (generated in script 02a)
 # --------------------------------------------------------------------------
 
 
@@ -69,7 +74,9 @@ nests_buff<- nests%>%
 zones<-c(1:8)
 
 #list raster files
+#file_list<-unlist(map(paste0(path_out,"Intermediate_outputs/HIMARSH"),~list.files(.,pattern = "vegcls_buff.tif$",full.names=T))) #maybe only need buffer for layers not derived from NAIP
 file_list<-unlist(map(paste0(dat_path,"Correll_Marsh_Zones"),~list.files(.,pattern = "DEM.tif$",full.names=T)))
+
 
 #read as raster layers
 vg_cls<-map(file_list,rast)
@@ -82,140 +89,41 @@ veg_class<-data.frame(value=c(1:2,4:9),
 
 
 ## Environmental Predictor 2: Unvegetated-Vegetated ratio
-# transformed uvvr coordinate system from WGS to NAD83 in ArcPro
-# just want band 4 (UVVR). Band 1 is unveg, 2 is veg, and 3 is proportion of water.
-
-# Read raster if it already exists. Otherwise process the UVVR layer.
-if(file.exists(paste0(path_out,"Final_outputs/UVVR/uvvr_mean_noOutlier.tif"))){
-  uvvr<-  rast(paste0(path_out,"Final_outputs/UVVR/uvvr_mean_noOutlier.tif"))
-  uvvr_diff<-  rast(paste0(path_out,"Final_outputs/UVVR/uvvr_diff_noOutlier.tif"))
-}
-if(!file.exists(paste0(path_out,"Final_outputs/UVVR/uvvr_mean_noOutlier.tif"))){
-  
-  # A. UVVR mean across 2014-2018
-  uvvr<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))%>%
-    #terra::project("EPSG:4269")%>%
-    dplyr::rename_with(function(x){x<-'uvvr_mean'},.cols = everything()) 
-  # values above 2 are not accurate, set to NA
-  uvvr[uvvr>2]<-NA
-  
-  # B. UVVR change (2014-2018)
-  uvvr14<-rast(paste0(dat_path,"UVVR/uvvr_14_utm18_mean_ext.tif"))%>%
-    #terra::project("EPSG:4269")%>%
-    dplyr::rename_with(function(x){x<-'uvvr_14'},.cols = everything())
-  # values above 2 are not accurate, set to NA
-  uvvr14[uvvr14>2]<-NA
-  uvvr18<-rast(paste0(dat_path,"UVVR/uvvr_18_utm18_mean_ext.tif"))%>%
-    #terra::project("EPSG:4269")%>%
-    dplyr::rename_with(function(x){x<-'uvvr_18'},.cols = everything())
-  uvvr18[uvvr18>2]<-NA
-  # subtract 2018 from 2014 to get change
-  uvvr_diff<-uvvr18-uvvr14
-  uvvr_diff<-uvvr_diff%>%
-    dplyr::rename_with(function(x){x<-'uvvr_diff'},.cols = everything())
-
-  
-  writeRaster(uvvr,filename = paste0(path_out,"Final_outputs/UVVR/uvvr_mean_noOutlier.tif"),overwrite=T)
-  writeRaster(uvvr_diff,filename = paste0(path_out,"Final_outputs/UVVR/uvvr_diff_noOutlier.tif"),overwrite=T)
-  
-}
+uvvr<-  rast(paste0(path_out,"Intermediate_outputs/UVVR/uvvr_mean_noOutlier_buff.tif"))%>%
+  dplyr::rename_with(function(x){x<-'uvvr_mean'},.cols = everything())  
+uvvr_diff<-  rast(paste0(path_out,"Intermediate_outputs/UVVR/uvvr_diff_noOutlier_buff.tif"))%>%
+  dplyr::rename_with(function(x){x<-'uvvr_diff'},.cols = everything()) 
 
 
-## Environmental Predictor 3: NAIP
-#if files do not exist
-if(!(file.exists(paste0(path_out,"Final_outputs/Correll_NAIP/Z1_zeroed_NDVI.tif")))){
-#list raster files
-file_list1<-unlist(map(paste0(dat_path,"Correll_NAIP/"),~list.files(.,pattern = "NDVI.tif$",full.names=T)))
-file_list2<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP/"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
 
-#read as raster layers
+## Environmental Predictor 3: NDVI
+file_list1<-unlist(map(paste0(path_out,"Intermediate_outputs/NDVI/"),~list.files(.,pattern = "zeroed_NDVI_buff.tif$",full.names=T)))
 ndvi<-map(file_list1,rast)
-pca<-map(file_list2,rast)
 
-#set values below 0 NDVI to 0 - barren land or water
-for(i in 1:length(ndvi)){
-  dat<-ndvi[[i]]
-  dat[dat<0]<-0
-  ndvi[[i]]<-dat
-}
 
-for(i in 1:length(ndvi)){
-writeRaster(ndvi[[i]],paste0(path_out,"Final_outputs/Correll_NAIP/Z",i,"_zeroed_NDVI.tif"))
-}
 
-}
-#read files if they exist
-file_list1<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP/"),~list.files(.,pattern = "zeroed_NDVI.tif$",full.names=T)))
-file_list2<-unlist(map(paste0(path_out,"Final_outputs/Correll_NAIP/"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
-#read as raster layers
-ndvi<-map(file_list1,rast)
+## Environmental Predictor 4: Principal Component of raw NAIP reflection bands (RBG)
+#file_list2<-unlist(map(paste0(path_out,"Intermediate_outputs/PCA/"),~list.files(.,pattern = "PC1_buff.tif$",full.names=T)))
+file_list2<-unlist(map(paste0(path_out,"Intermediate_outputs/PCA/"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
 pca<-map(file_list2,rast)
 
 
 
-## Environmental Predictor 4: Wind speed/direction (better flood indicator than precipitation?)
+## Environmental Predictor 5: Precipitation
+precip<-rast(paste0(path_out,"Intermediate_outputs/Precip/precip_buff.tif"))
 
-
-## Environmental Predictor 5: angle to horizon line? Measure of tall surrounding topography or objects? 
 
 
 ## Environmental Predictor 6: tidal restrictions
+tideres<- rast(paste0(path_out,"Intermediate_outputs/Tidal_restriction/tideres_buff.tif"))%>%
+  dplyr::rename_with(function(x){x<-'tideres'},.cols = everything()) 
 
 
 
-
-## 4. Calculate texture surfaces **redo homogeneity zones 2-7
-# --------------------------------------------
-# Read raster if it already exists. Otherwise process the texture layers.
-if(file.exists(paste0(path_out,"Final_outputs/NAIP_texture/hom_txt_1.tif"))){
-  #list raster files
-  file_list1<-unlist(map(paste0(path_out,"Final_outputs/NAIP_texture/"),~list.files(.,pattern = "hom.*[0-9].tif$",full.names=T)))
-  file_list2<-unlist(map(paste0(path_out,"Final_outputs/NAIP_texture/"),~list.files(.,pattern = "cor.*[0-9].tif$",full.names=T)))
-  file_list3<-unlist(map(paste0(path_out,"Final_outputs/NAIP_texture/"),~list.files(.,pattern = "ent.*[0-9].tif$",full.names=T)))
+## Environmental Predictor 7: Texture
+txt_corr<-map(unlist(map(paste0(path_out,"Intermediate_outputs/Texture/"),~list.files(.,pattern = "cor.*[0-9]_buff.tif$",full.names=T))),rast)
+txt_entro<-map(unlist(map(paste0(path_out,"Intermediate_outputs/Texture/"),~list.files(.,pattern = "ent.*[0-9]_buff.tif$",full.names=T))),rast)
   
-  #read as raster layers
-  txt_homo<-map(file_list1,rast)
-  txt_corr<-map(file_list2,rast)
-  txt_entro<-map(file_list3,rast)
-  
-
-}
-if(!file.exists(paste0(path_out,"Final_outputs/NAIP_texture/hom_txt_1.tif"))){
-  
-  ## 3. a. Raster Quanitization 
-  #----------------------------
-  # use equal range method when comparing across several datasets (can set gloabl min and max range using max_val and min_val) - splits data into equal ranges
-  # alternative option is "equal prob" which splits by quantiles, used in original paper (Haralick and Shanmugam 1973)
-  # NDVI of live plants ranges 0:1, set range and breaks at 0.1 intervals
-  txt_homo<-txt_entro<-txt_corr<-list()
-  
-  for (i in 1:length(ndvi)){
-    ndvi_rq<- quantize_raster(r = ndvi[[i]], n_levels = 10, method = "equal range")
-    
-    ## 3. b. calc texture metric surfaces
-    #----------------------------
-    # use window size of 3x3m 
-    # calculate across multiple shifts (invariant)
-    txt<- glcm_textures(ndvi_rq, w = c(3,3), n_levels =10, 
-                        metrics = c("glcm_homogeneity", 
-                                    "glcm_entropy", "glcm_correlation"),
-                        quantization = "none", shift = list(c(1, 0), c(1, 1), c(0, 1), c(-1, 1)))
-    
-    txt_homo[[i]]<-txt[[1]]
-    txt_entro[[i]]<-txt[[2]]
-    txt_corr[[i]]<-txt[[3]]
-    
-  }
-  
-  # write newly generated layers to file
-
-
-  for(i in 1:length(txt_homo)){
-    writeRaster(txt_homo[[i]],filename=paste0(path_out,"Final_outputs/NAIP_texture/hom_txt",i,".tif"),overwrite=T)
-    writeRaster(txt_entro[[i]],filename=paste0(path_out,"Final_outputs/NAIP_texture/ent_txt",i,".tif"),overwrite=T)
-    writeRaster(txt_corr[[i]],file=paste0(path_out,"Final_outputs/NAIP_texture/cor_txt",i,".tif"),overwrite=T)
-  }
-}
 
 
 
