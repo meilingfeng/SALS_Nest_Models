@@ -11,19 +11,15 @@ if(!exists("pres_dat")){
 
 ## 1. Select model 
 #------------------------------------------
-p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca","ndvi","latitude")))],collapse = "+"),"+HIMARSH*ndvi+HIMARSH*latitude+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
-  # for pres, removes cor_txt and uvvr_diff
-s.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","ndvi","latitude")))],collapse = "+"),"+HIMARSH*ndvi+HIMARSH*latitude")), surv_dat,family=binomial(link = "logit")))
-  # for surv, removes ent_txt, uvvr_diff, cor_txt
-
-# remove texture metrics and uvvr_diff
+p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca","ndvi")))],collapse = "+"),"+HIMARSH*ndvi+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
+  # for pres, keeps all
+s.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","ndvi")))],collapse = "+"),"+HIMARSH*ndvi")), surv_dat,family=binomial(link = "logit")))
+  # for surv, removes ent_txt, uvvr_mean, ndvi - use cor and diff instead for these
+  #Use proportion of high marsh instead of high marsh at nest center - error in nest location and resolution uncertainty in veg layer
 
 
 ## Start a list of potential models
-
-#Use proportion of high marsh over high marsh at nest - account for error in nest location and resolution uncertainty in veg layer
-
-# 1. Habitat characteristics not captured by High Marsh
+# A. Habitat characteristics not captured by High Marsh
 
 # compare a model using just proportion of high marsh to models just using NDVI, Entropy, UVVR
 # compare models using additive combinations of each: highmarsh+NDVI. Highmarsh+UVVR. Highmarsh+PC, 
@@ -53,46 +49,60 @@ mod_list_surv1[[2]]<-glm(y~pca,
 mod_list_pres1[[3]]<-glm(y~uvvr_mean, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[3]]<-glm(y~uvvr_mean, 
+mod_list_surv1[[3]]<-glm(y~uvvr_diff, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+# UVVR
+mod_list_pres1[[4]]<-glm(y~ent_txt, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[4]]<-glm(y~cor_txt, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
 # HIGH MARSH
-mod_list_pres1[[4]]<-glm(y~HIMARSH, 
+mod_list_pres1[[5]]<-glm(y~HIMARSH, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv1[[4]]<-glm(y~HIMARSH, 
+mod_list_surv1[[5]]<-glm(y~HIMARSH, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 #Does adding NDVI or UVVR or PCA improve high marsh?
 # HIGH MARSH +NDVI
-mod_list_pres1[[5]]<-glm(y~HIMARSH+ndvi, 
+mod_list_pres1[[6]]<-glm(y~HIMARSH+ndvi, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[5]]<-glm(y~HIMARSH+ndvi, 
+mod_list_surv1[[6]]<-glm(y~HIMARSH+ndvi, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 # HIGH MARSH + UVVR
-mod_list_pres1[[6]]<-glm(y~HIMARSH+uvvr_mean, 
+mod_list_pres1[[7]]<-glm(y~HIMARSH+uvvr_mean, 
                           data=pres_dat,
                           family = binomial(link="logit"))
-mod_list_surv1[[6]]<-glm(y~HIMARSH+uvvr_mean, 
+mod_list_surv1[[7]]<-glm(y~HIMARSH+uvvr_diff, 
                           data=surv_dat,
                           family = binomial(link="logit"))
 # HIGH MARSH + PCA
-mod_list_pres1[[7]]<-glm(y~HIMARSH+pca, 
+mod_list_pres1[[8]]<-glm(y~HIMARSH+pca, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[7]]<-glm(y~HIMARSH+pca, 
+mod_list_surv1[[8]]<-glm(y~HIMARSH+pca, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+# HIGH MARSH + texture
+mod_list_pres1[[9]]<-glm(y~HIMARSH+ent_txt, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[9]]<-glm(y~HIMARSH+cor_txt, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
 # ALL
-mod_list_pres1[[8]]<-glm(y~ndvi+uvvr_mean+pca+HIMARSH, 
+mod_list_pres1[[10]]<-glm(y~ndvi+uvvr_mean+pca+ent_txt+HIMARSH, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[8]]<-glm(y~ndvi+uvvr_mean+pca+HIMARSH,
+mod_list_surv1[[10]]<-glm(y~ndvi+uvvr_diff+pca+cor_txt+HIMARSH,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
@@ -130,46 +140,63 @@ mod_tab_habstr[6,"name"]<-"Marsh Resilience (UVVR)"
 mod_tab_habstr[6,"fun"]<-deparse1(mod_list_surv1[[3]]$formula)
 mod_tab_habstr[6,"AIC"]<-mod_list_surv1[[3]]$aic
 
-mod_tab_habstr[7,"name"]<-"High Marsh"
+mod_tab_habstr[7,"name"]<-"Texture"
 mod_tab_habstr[7,"fun"]<-deparse1(mod_list_pres1[[4]]$formula)
 mod_tab_habstr[7,"AIC"]<-mod_list_pres1[[4]]$aic
 
-mod_tab_habstr[8,"name"]<-"High Marsh"
+mod_tab_habstr[8,"name"]<-"Texture"
 mod_tab_habstr[8,"fun"]<-deparse1(mod_list_surv1[[4]]$formula)
 mod_tab_habstr[8,"AIC"]<-mod_list_surv1[[4]]$aic
 
-mod_tab_habstr[9,"name"]<-"High Marsh + NDVI"
+mod_tab_habstr[9,"name"]<-"High Marsh"
 mod_tab_habstr[9,"fun"]<-deparse1(mod_list_pres1[[5]]$formula)
 mod_tab_habstr[9,"AIC"]<-mod_list_pres1[[5]]$aic
 
-mod_tab_habstr[10,"name"]<-"High Marsh + NDVI"
+mod_tab_habstr[10,"name"]<-"High Marsh"
 mod_tab_habstr[10,"fun"]<-deparse1(mod_list_surv1[[5]]$formula)
 mod_tab_habstr[10,"AIC"]<-mod_list_surv1[[5]]$aic
 
-mod_tab_habstr[11,"name"]<-"High Marsh + UVVR"
+mod_tab_habstr[11,"name"]<-"High Marsh + NDVI"
 mod_tab_habstr[11,"fun"]<-deparse1(mod_list_pres1[[6]]$formula)
 mod_tab_habstr[11,"AIC"]<-mod_list_pres1[[6]]$aic
 
-mod_tab_habstr[12,"name"]<-"High Marsh + UVVR"
+mod_tab_habstr[12,"name"]<-"High Marsh + NDVI"
 mod_tab_habstr[12,"fun"]<-deparse1(mod_list_surv1[[6]]$formula)
 mod_tab_habstr[12,"AIC"]<-mod_list_surv1[[6]]$aic
 
-
-mod_tab_habstr[13,"name"]<-"High Marsh + PCA"
+mod_tab_habstr[13,"name"]<-"High Marsh + UVVR"
 mod_tab_habstr[13,"fun"]<-deparse1(mod_list_pres1[[7]]$formula)
 mod_tab_habstr[13,"AIC"]<-mod_list_pres1[[7]]$aic
 
-mod_tab_habstr[14,"name"]<-"High Marsh + PCA"
+mod_tab_habstr[14,"name"]<-"High Marsh + UVVR"
 mod_tab_habstr[14,"fun"]<-deparse1(mod_list_surv1[[7]]$formula)
 mod_tab_habstr[14,"AIC"]<-mod_list_surv1[[7]]$aic
 
-mod_tab_habstr[15,"name"]<-"Full Additional Habitat"
+
+mod_tab_habstr[15,"name"]<-"High Marsh + PCA"
 mod_tab_habstr[15,"fun"]<-deparse1(mod_list_pres1[[8]]$formula)
 mod_tab_habstr[15,"AIC"]<-mod_list_pres1[[8]]$aic
 
-mod_tab_habstr[16,"name"]<-"Full Additional Habitat"
+mod_tab_habstr[16,"name"]<-"High Marsh + PCA"
 mod_tab_habstr[16,"fun"]<-deparse1(mod_list_surv1[[8]]$formula)
 mod_tab_habstr[16,"AIC"]<-mod_list_surv1[[8]]$aic
+
+
+mod_tab_habstr[17,"name"]<-"High Marsh + Texture"
+mod_tab_habstr[17,"fun"]<-deparse1(mod_list_pres1[[9]]$formula)
+mod_tab_habstr[17,"AIC"]<-mod_list_pres1[[9]]$aic
+
+mod_tab_habstr[18,"name"]<-"High Marsh + Texture"
+mod_tab_habstr[18,"fun"]<-deparse1(mod_list_surv1[[9]]$formula)
+mod_tab_habstr[18,"AIC"]<-mod_list_surv1[[9]]$aic
+
+mod_tab_habstr[19,"name"]<-"Full Additional Habitat"
+mod_tab_habstr[19,"fun"]<-deparse1(mod_list_pres1[[10]]$formula)
+mod_tab_habstr[19,"AIC"]<-mod_list_pres1[[10]]$aic
+
+mod_tab_habstr[20,"name"]<-"Full Additional Habitat"
+mod_tab_habstr[20,"fun"]<-deparse1(mod_list_surv1[[10]]$formula)
+mod_tab_habstr[20,"AIC"]<-mod_list_surv1[[10]]$aic
 
 
 mod_tab_habstr<-group_by(mod_tab_habstr,response)%>%mutate(dAIC=AIC-min(AIC))%>%
@@ -177,78 +204,11 @@ mod_tab_habstr<-group_by(mod_tab_habstr,response)%>%mutate(dAIC=AIC-min(AIC))%>%
   arrange(response,class,dAIC)
 
 
-# 3. Do these habitat relationships change across the breeding range? (eg more success at center of range?)
-# Latitude explains variation in these relationships throughout the breeding range
-# add latitude on its own and to habitat model
-mod_list_pres4<-list()
-mod_list_surv4<-list()
-
-# compare models of habitat with latitude
 
 
 
-# Just latitude
-mod_list_pres4[[1]]<-glm(y~latitude, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv4[[1]]<-glm(y~latitude, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-
-# latitude with additional habitat
-mod_list_pres4[[2]]<-glm(y~ndvi+uvvr_mean+ent_txt+HIMARSH+latitude,
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-
-mod_list_surv4[[2]]<-glm(y~ndvi+uvvr_mean+ent_txt+HIMARSH+latitude,
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-
-
-
-
-# store model selection factors in a table
-mod_tab_lat<-data.frame(response=rep(c("Presence","Success"),length(mod_list_pres4)),
-                        class=rep("Geographic Variation",2*length(mod_list_pres4)),
-                        name=rep(NA,2*length(mod_list_pres4)),
-                        fun=rep(NA,2*length(mod_list_pres4)),
-                        AIC=rep(NA,2*length(mod_list_pres4)),
-                        dAIC=rep(NA,2*length(mod_list_pres4)))
-
-
-
-mod_tab_lat[1,"name"]<-"Latitude"
-mod_tab_lat[1,"fun"]<-deparse1(mod_list_pres4[[1]]$formula)
-mod_tab_lat[1,"AIC"]<-mod_list_pres4[[1]]$aic
-
-mod_tab_lat[2,"name"]<-"Latitude"
-mod_tab_lat[2,"fun"]<-deparse1(mod_list_surv4[[1]]$formula)
-mod_tab_lat[2,"AIC"]<-mod_list_surv4[[1]]$aic
-
-
-mod_tab_lat[3,"name"]<-"All Habitat + Latitude"
-mod_tab_lat[3,"fun"]<-deparse1(mod_list_pres4[[2]]$formula)
-mod_tab_lat[3,"AIC"]<-mod_list_pres4[[2]]$aic
-
-mod_tab_lat[4,"name"]<-"All Habitat + Latitude"
-mod_tab_lat[4,"fun"]<-deparse1(mod_list_surv4[[2]]$formula)
-mod_tab_lat[4,"AIC"]<-mod_list_surv4[[2]]$aic
-
-
-
-
-mod_tab_lat<-group_by(mod_tab_lat,response)%>%
-  mutate(dAIC=AIC-min(AIC))%>%
-  ungroup()%>%
-  arrange(response,dAIC)
-
-
-
-
-# 2. Quality within high marsh (interactions) - sparrow presence does not equal nesting presence
-# within high marsh habitat, certain habitat qualities are more suitable for nesting
+# B. Quality within high marsh (interactions) - sparrow presence does not mean nest presence
+  # within high marsh habitat, certain habitat qualities are more suitable for nesting
   # eg healthier vegetation (NDVI) grows taller and denser
   # compare highmarsh only, ndvi only, highmarsh + ndvi to high marsh*ndvi
 mod_list_pres2<-list()
@@ -273,20 +233,12 @@ mod_list_surv2[[2]]<-glm(y~HIMARSH*ndvi,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
-# high marsh and Latitude
-mod_list_pres2[[3]]<-glm(y~HIMARSH*latitude, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv2[[3]]<-glm(y~HIMARSH*latitude, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
 
 #Do adding the interactions improve all habitat models?
-mod_list_pres2[[4]]<-glm(y~HIMARSH*ndvi+uvvr_mean+HIMARSH*pca+HIMARSH*latitude, 
+mod_list_pres2[[3]]<-glm(y~HIMARSH*ndvi+uvvr_mean+ent_txt+HIMARSH*pca, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv2[[4]]<-glm(y~HIMARSH*ndvi+uvvr_mean+pca+HIMARSH*latitude,
+mod_list_surv2[[3]]<-glm(y~HIMARSH*ndvi+uvvr_diff+cor_txt+pca,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
@@ -315,22 +267,13 @@ mod_tab_int[4,"name"]<-"High Marsh * NDVI"
 mod_tab_int[4,"fun"]<-deparse1(mod_list_surv2[[2]]$formula)
 mod_tab_int[4,"AIC"]<-mod_list_surv2[[2]]$aic
 
-
-mod_tab_int[5,"name"]<-"High Marsh * Latitude"
+mod_tab_int[5,"name"]<-"All Habitat with Interaction"
 mod_tab_int[5,"fun"]<-deparse1(mod_list_pres2[[3]]$formula)
 mod_tab_int[5,"AIC"]<-mod_list_pres2[[3]]$aic
 
-mod_tab_int[6,"name"]<-"High Marsh * Latitude"
+mod_tab_int[6,"name"]<-"All Habitat with Interaction"
 mod_tab_int[6,"fun"]<-deparse1(mod_list_surv2[[3]]$formula)
 mod_tab_int[6,"AIC"]<-mod_list_surv2[[3]]$aic
-
-mod_tab_int[7,"name"]<-"All Habitat with Interaction"
-mod_tab_int[7,"fun"]<-deparse1(mod_list_pres2[[4]]$formula)
-mod_tab_int[7,"AIC"]<-mod_list_pres2[[4]]$aic
-
-mod_tab_int[8,"name"]<-"All Habitat with Interaction"
-mod_tab_int[8,"fun"]<-deparse1(mod_list_surv2[[4]]$formula)
-mod_tab_int[8,"AIC"]<-mod_list_surv2[[4]]$aic
 
 
 
@@ -341,14 +284,14 @@ mod_tab_int<-group_by(mod_tab_int,response)%>%mutate(dAIC=AIC-min(AIC))%>%
 
 
 
-
-################################
 # compare models
-mod_tab<-rbind(mod_tab_habstr,mod_tab_int,mod_tab_lat)%>%
+mod_tab<-rbind(mod_tab_habstr,mod_tab_int)%>%
   group_by(response)%>%
   mutate(overall_dAIC=AIC-min(AIC))%>%
-  arrange(response,overall_dAIC)%>%
+  arrange(response,class,dAIC)%>%
   ungroup()
+
+write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"), row.names = F)
 
 
 # select the top ranked model based on AIC (any models within 2 delta AIC)
@@ -358,9 +301,6 @@ form_pres<-mod_pres[mod_pres$AIC==min(mod_pres$AIC),]$fun
 mod_surv<-mod_tab[mod_tab$response=="Success",]
 form_surv<-mod_surv[mod_surv$AIC==min(mod_surv$AIC),]$fun
 
-#Additional habitat characteristics that vary within the high marsh are important for predicting nest placement and success
-# including all the habitat variables not dropped by the initial AIC step and the interactions we identified in the previous script lead to the highest AIC
-#################################
 
 
 
@@ -423,29 +363,13 @@ for (i in 1:length(file_list_all_zones)){
   predictors<-rast(unlist(file_list_all_zones[[i]]))
   
   # b) name layers as their variables (rename veg_code as just Highmarsh since we're only using that one class for now)
-  names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","HIMARSH","LOMARSH")
+  names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH")
 
   # c) select just the layers that were used as predictor variables in the model
   mod_preds_p<-predictors[[names(predictors)%in%terms_pres]]
   mod_preds_s<-predictors[[names(predictors)%in%terms_surv]]
   
-  
-  # d) get latitude if included in models
-  if("latitude"%in%terms_pres){
-    lat<-rast(crs=crs(mod_preds_p[[1]]),extent=ext(mod_preds_p[[1]]),resolution=res(mod_preds_p[[1]]),vals=xyFromCell(terra::project(mod_preds_p[[1]],"EPSG:4617"),1:ncell(mod_preds_p[[1]]))[,2])
-    mod_preds_p<-rast(list(mod_preds_p,lat))
-    names(mod_preds_p[[nlyr(mod_preds_p)]])<-"latitude"
-  }
-  if("latitude"%in%terms_surv){
-    lat<-rast(crs=crs(mod_preds_s[[1]]),extent=ext(mod_preds_s[[1]]),resolution=res(mod_preds_s[[1]]),vals=xyFromCell(terra::project(mod_preds_s[[1]],"EPSG:4617"),1:ncell(mod_preds_s[[1]]))[,2])
-    # add to predictor list
-    mod_preds_s<-rast(list(mod_preds_s,lat))
-    names(mod_preds_s[[nlyr(mod_preds_s)]])<-"latitude"
-  }
-  
-  
-  
-  # e) set areas outside marsh to NA (mask all predictors)
+  # d) set areas outside marsh to NA (mask all predictors)
   mask<-predictors["Highmarsh"]
   mask[mask==0|mask==9|mask==7|mask==8]<-NA
   preds_mask_s<-list()
