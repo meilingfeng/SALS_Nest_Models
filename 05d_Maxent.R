@@ -95,19 +95,12 @@ for (j in 1:length(file_list_all_zones)){
     predictors<-rast(unlist(file_list_all_zones[[j]]))
     
     # b) name layers as their variables (rename veg_code as just Highmarsh since we're only using that one class for now)
-    names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH","LOMARSH")
+    names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH")
     
     # c) select just the layers that were used as predictor variables in the model
     mod_preds<-predictors[[names(predictors)%in%c("Highmarsh",all_terms)]]
     
-    # d) add latitude to predictors
-    lat<-rast(crs=crs(mod_preds[[1]]),extent=ext(mod_preds[[1]]),resolution=res(mod_preds[[1]]),vals=xyFromCell(terra::project(mod_preds[[1]],"EPSG:4617"),1:ncell(mod_preds[[1]]))[,2])
-    mod_preds<-rast(list(mod_preds,lat))
-    names(mod_preds[[nlyr(mod_preds)]])<-"latitude"
-    
-    
-    
-    # e) set areas outside marsh to NA (mask all predictors with marsh area)
+    # d) set areas outside marsh to NA (mask all predictors with marsh area)
     mask<-predictors["Highmarsh"]
     mask[mask==0|mask==9|mask==7|mask==8]<-NA
     preds_mask<-list()
@@ -122,7 +115,7 @@ for (j in 1:length(file_list_all_zones)){
     
     
     
-    # f) PREDICT 
+    # e) PREDICT 
     mxt_predict_pres[[j]]<- mask(predict(preds_mask2[[-1]], me_p, progress=''),
                                  mask)
     mxt_predict_surv[[j]]<- mask(predict(preds_mask2[[-1]], me_s, progress=''),
