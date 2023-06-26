@@ -86,26 +86,8 @@ ggplot(surv_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+
 ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions_success.png"), width = 7, height = 6, dpi = "retina")
 
 
-# Hypothesis: Important habitat characteristics change across the breeding range
-# high marsh appears to be less important for successful nesting at higher latitudes
-p3<-ggplot(surv_dat,aes(x=latitude,y=HIMARSH,group=as.factor(y)))+
-  geom_point(aes(color=as.factor(y)))+
-  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
-  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-  labs(color = "Nest Success", linetype= "Nest Success",y = "Proportion High Marsh", x="Latitude") + 
-  theme_classic(base_size=12)
 
-p4<-ggplot(pres_dat,aes(x=latitude,y=HIMARSH,group=as.factor(y)))+
-  geom_point(aes(color=as.factor(y)))+
-  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
-  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-  labs(color = "Nest Site", linetype= "Nest Site",y = "Proportion High Marsh", x="") + 
-  theme_classic(base_size=12)
-p4/p3
-ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_lat_interactions_bp.png"), width = 7, height = 10, dpi = "retina")
-
-
-# conclusions: consider HIMARSH*pca (just presence), HIMARSH*NDVI, HIMARSH*latitude
+# conclusions: consider HIMARSH*pca (just presence), HIMARSH*NDVI
 
 
 ## 4. Are response observations independent?
