@@ -7,7 +7,10 @@ library(sf)
 library(sp)
 library(terra)
 
-#*** fix add nest data flag
+########################################################
+# Review nest and vegetation coordinate fixes in previous scripts
+########################################################
+
 
 ## Set file path to data
 # -------------------------------------------

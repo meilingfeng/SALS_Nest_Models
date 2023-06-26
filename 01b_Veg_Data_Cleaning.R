@@ -11,7 +11,12 @@ library(spData)
 library(geodata)
 library(rnaturalearth)
 
-#****MR19 missing decimal?
+
+########################################################
+# Fix any coordinate issues with the vegetation plots
+########################################################
+
+
 
 ## Set file path to data
 # -------------------------------------------
@@ -20,20 +25,22 @@ path_out<-"D:/Nest_Models/Outputs/"
 
 
 
-## Load data
+## 1. Load data
 # -------------------------------------------
 
-# 1. Cleaned nest fate data
+# Cleaned nest fate data
 fates<- read.csv(paste0(path_out,"Intermediate_Outputs/new_nest_coords_12_9_22.csv"))
 
-# 2. Original Nest location data
+
+# Original Nest location data
 nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
   #Remove records missing site and year info (these were added as filler data to merge with veg data)
   filter(!is.na(site.code)&!is.na(Year))
 
-# 3. vegetation plots
+
+# vegetation plots
 veg<-read.csv(paste0(dat_path,"Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("veg.id"="VegPointID","type"="PointType","site.code"="Site","date"="SurveyDate",
                 "coord.system"="Coordinate.System","utm.zone"="UTM.Zone","Easting","Northing","Lat","Long")%>%
@@ -44,31 +51,30 @@ veg<-read.csv(paste0(dat_path,"Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA
   distinct(.keep_all = T)
 
 
-## Compare similar records between veg and nest data
-similar<-veg[veg$veg.id%in%nests$id,]
+## Compare similar records between vegetation data and nest data
+similar<-veg[veg$veg.id%in%nests$id,] # what nest records in the nest location data have vegetation survey data?
 nrow(similar)
 #5061 shared plots between veg and nest data
+
 nrow(veg[veg$type=="Nest",])
-#5075 total nest plots in the veg data
-nrow(veg[veg$type=="Random",])
-#5930 random plots
-
-
-5077-5063
-#14 extra nest ids in the veg data
+#5075 total nest plots in the veg data 
+# (about 14 extra nest records in the veg data)
 extra<-veg[!(veg$veg.id%in%nests$id)&veg$type%in%c("Nest","NEST"),]
 
+nrow(veg[veg$type=="Random",])
+#5930 random vegeation plots not associated with nests
 
 
 
 
-## Site information - select Site code, site name, and state
+
+
+## 2. Site information - select Site code, site name, and state
 # -------------------------------------------------------------
-
 sites <- fates%>%
   dplyr::select(site.code,Site,State,utm.zone)%>%
   distinct(.keep_all = T)%>%
-  #Keep woodland beach in DE over Waterford beach in CT, plots with coordinates are plotting in DE
+  #For site "WB", assign it to woodland beach in DE over Waterford beach in CT, records are plotting in DE
   filter(!(site.code=="WB"&State=="CT"))
 # fill in site info for sub sites found in veg data 
 veg_sites<-unique(veg[!(veg$site.code%in%fates$site.code),"site.code"])
@@ -92,9 +98,11 @@ veg<-veg%>%
       substr(veg.id, start=1,stop=2)=="WA",gsub("WA","BI",veg.id),veg.id)
   )
 
-## Plot Data first (mark any typos and leave correct data untouched)
+
+
+## 3. Plot Data (mark any typos and leave correct data untouched)
 # -------------------------------------------------------------------
-#Mark records missing coordinates
+# Mark records missing coordinates
 veg2<-filter(veg,(if_all(c(Easting,Northing), ~ !is.na(.))|if_all(c(Lat,Long), ~ !is.na(.))))%>%
   # also remove coordinates that are 0 or small values (less than 10, likely typos)
   filter(if_any(c(Easting,Northing,Lat,Long), ~ .>10))
@@ -112,7 +120,7 @@ nrow(veg[veg$missing.coords==1&veg$type=="Random",])
 rand_missing<-veg[veg$missing.coords==1&veg$type=="Random",]
 
 
-#Merge utm zones to veg data
+# Merge utm zones to veg data
 veg<-left_join(dplyr::select(veg,-utm.zone),sites,by="site.code")
 
 
@@ -166,13 +174,13 @@ plots<-terra::extract(marsh,vect(plots),bind=T)%>%
 # verify typos in arcpro
 output_shp<-dplyr::select(plots,veg.id,coord.typo)%>%
   distinct(veg.id,.keep_all = T)
-if(!(file.exists(paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_locations_error_edits_12_26_22.shp")))){
+if(!(file.exists(paste0(path_out,"Intermediate_Outputs/Nest_locations/veg_locations_error_edits_12_26_22.shp")))){
 st_write(output_shp,
-         paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_locations_error_edits_12_26_22.shp"), delete_layer =T)
+         paste0(path_out,"Intermediate_Outputs/Nest_locations/veg_locations_error_edits_12_26_22.shp"), delete_layer =T)
 }
 
 # Mark records with typos and extract them for edits
-veg_edits<-st_read(paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_locations_error_edits_12_26_22.shp"))%>%
+veg_edits<-st_read(paste0(path_out,"Intermediate_Outputs/Nest_locations/veg_locations_error_edits_12_26_22.shp"))%>%
   st_drop_geometry()%>%
   right_join(veg,by=c("veg_id"="veg.id"))%>%
   
@@ -187,7 +195,7 @@ veg_edits<-rbind(veg_edits,filter(veg,missing.coords==1))%>%
 
 
 
-## Fill in missing nest coordinate data from nest dataset
+## 4. Fill in missing nest coordinate data from nest dataset
 #---------------------------------------------------------
 
 #first see if shared nests have the same coordinate info for those that do have info in the veg data
@@ -305,9 +313,10 @@ nrow(veg_edits[veg_edits$missing.coords==1&veg_edits$type=="Random",])
 
 
 
-## Apply batch edits (Same batch edits for nests appear to mostly apply to the random veg sites)
+## 5. Apply batch coordinate edits (Same batch edits for nests appear to mostly apply to the random veg sites)
+#----------------------------------------------------------------------------------------------------------------
 
-# 1) Degrees Decimal Minutes records (ONLY the case for NJ sites AT, OC, and MW in 2014 and 2015)
+# 5-1) Degrees Decimal Minutes records (ONLY the case for NJ sites AT, OC, and MW in 2014 and 2015)
 
 veg_edits4<-veg_edits%>%
   # For records with coordinate information...
@@ -374,7 +383,7 @@ veg_edits5<-veg_edits%>%
 veg_edits<-rbind(veg_edits5,mutate(veg_edits[!(veg_edits$veg.id%in%veg_edits5$veg.id),],batch_DecMin_DD_reversed=0))
 
 
-# B-2) Batch conversion of UTM coords that are actually DD missing decimals
+# 5-2) Batch conversion of UTM coords that are actually DD missing decimals
 ## HM, ER, BI, JC, SP, 2014 and HM, BI, ER 2015 are DD missing decimals in nest data, is NOT the case for rand veg data.
 # just replace the nest records with fixed nest coordinates. 
 
@@ -414,7 +423,7 @@ veg_edits<-rbind(veg_edits6,veg_edits[!(veg_edits$veg.id%in%veg_edits6$veg.id),]
 
 
 
-# B -3) Move DD data in easting/westing columns into long/lat columns (only applies to nest observations n =49)
+# 5-3) Move DD data in easting/westing columns into long/lat columns (only applies to nest observations n =49)
 dat6<-veg_edits%>%
   # if Lat is missing and Easting is using values in Latitude range
   filter(abs(Easting)<46 & abs(Easting)>36 & is.na(Lat))%>%
@@ -453,7 +462,7 @@ dat10<-rbind(dat8,dat9)%>%
 
 veg_edits<-rbind(dat10,mutate(veg_edits[!(veg_edits$veg.id%in%dat10$veg.id),],batch_move_DD_to_LatLong=0))
 
-# B -4) label the coordinate system and unit for all these nests as Decimal Degrees and all other nests as UTM
+# 5-4) label the coordinate system and unit for all these nests as Decimal Degrees and all other nests as UTM
 veg_edits<-veg_edits%>%
   mutate(Coordinate.System=case_when(
     (if_all(c(Lat,Long),~!is.na(.)) & missing.coords!=1) ~"Lat/Long(DD)",
@@ -479,7 +488,7 @@ veg<-veg%>%
 
 
 
-## Plot Data
+## 6. Plot Data
 # -------------------------------------------
 
 # get coordinate systems and convert coordinates to spatial data
@@ -581,7 +590,9 @@ plots_final<-dplyr::select(plots,veg.id,date)%>%
 
 
 
-# Make final shp and csv outputs
+## 7.  Make final shp and csv outputs
+#------------------------------------------------------------
+
 # read in original veg data variables
 veg_orig<-read.csv(paste0(dat_path,"Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select(-c("PointType","Site","UTM.Zone","Easting","Northing","Lat","Long","Coordinate.System"))
@@ -625,5 +636,5 @@ plots<-rbind(plots_utm18,plots_utm19,plots_latlong)%>%
 st_write(plots,
          paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"), delete_layer =T)
 st_write(plots,
-         paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23_22.kml"), delete_layer =T)
+         paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.kml"), delete_layer =T)
  

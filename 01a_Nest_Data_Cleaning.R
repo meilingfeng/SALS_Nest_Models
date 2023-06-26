@@ -13,6 +13,11 @@ library(geodata)
 library(rnaturalearth)
 
 
+########################################################
+# Fix any coordinate issues with the nest locations
+########################################################
+
+
 ## Set file path to data
 # -------------------------------------------
 dat_path<-"D:/Nest_Models/Data/"
@@ -20,25 +25,28 @@ path_out<-"D:/Nest_Models/Outputs/"
 
 
 
-## Load data
+## 1. Load Nest data
 # -------------------------------------------
 
-## 1. Nest fates - select nest ID and nest fate
+## Nest fates information - select nest ID and nest fate
 fates<-read.csv(paste0(dat_path,"NestFates_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","fate"="UltimateNestFate")%>%
-  # add flags for each type of edit we are applying to the original data
-  mutate(missing.location.rec=0,
-         missing.site.info=0,
-         missing.coords=0,
-         coord.typo=0,
-         batch_DecMin_DD_reversed=0,
-         batch_DecMin_DD=0,
-         batch_dec_addition=0,
-         batch_dec_addition_reversed=0,
-         batch_move_DD_to_LatLong=0)
-  # manually adjusted the nest id "id19051" to "ID19051"
+  
+  # add flags for each type of coordinate edit we are applying to the original data
+  mutate(missing.location.rec=0, # nest fate record is missing a nest location record
+         missing.site.info=0, # record is missing site information (state, zone)
+         missing.coords=0, # nest location record is missing coordinates
+         coord.typo=0, # nest coordinates are not plotting in Mid Atlantic tidal marsh zone
+         batch_DecMin_DD_reversed=0, # Coordinates are in Decimal Minute format and lat is in the longitude column (vice vera). Coverted to Decimal Degrees and reversed lat long.
+         batch_DecMin_DD=0, # Coordinates are in Decimal Minute format. Coverted to Decimal Degrees.
+         batch_dec_addition=0, # Decimal Degree coodinates are missing a decimal. Added decimal.
+         batch_dec_addition_reversed=0, # Decimal Degree coodinates are missing a decimal and lat is in the longitude column (vice vera). Added decimal and reversed lat long columns.
+         batch_move_DD_to_LatLong=0) # Decimal Degrees were in the UTM northing easting columns. Moved to lat long.
+  # manually changed the nest id "id19051" to read "ID19051"
 
-  # Nest location information - select nest ID, Site code, Year, Species, Coordinate information
+
+
+## Nest location information - select nest ID, Site code, Year, Species, Coordinate information
 nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
@@ -48,14 +56,19 @@ nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC"
 
 
 
-## 2. Site information - select Site code, site name, and state
-  #site info from banding SOP
+
+
+## 2. Load Site information - compile Site code, site name, and state
+#-----------------------------------------------------------------------------------
+## some site information from SHARP banding SOP
 sites_sop<-read.csv(paste0(dat_path,"Sites.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("site.code"="Site_Code","Site", "State")
-  #site info from Kate
+
+## more sites from Kate
 sites_kate<-read.csv(paste0(dat_path,"Nest_Site_Metadata_kate.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("site.code"="SiteID", "State","Region")
-  #additional site info from Sam A's code
+
+## additional sites' information from Sam A's code
   sites_sam<- data.frame(site.code = c("AT", "BI", "CF", "CL", "DI", "EL", "ER", "HM", "FB", "FS", 
                                     "ID", "JC", "JO", "LU", "MN", "MQ", "MW", "Morris Island", "NC", "NO", 
                                     "OC", "PA", "PB", "PR", "SA", "SC", "SG", "SY", "WI", "NC2", 
@@ -68,13 +81,17 @@ sites_kate<-read.csv(paste0(dat_path,"Nest_Site_Metadata_kate.csv"),na.strings=c
                                   "18T", "19T", "19T", "19T", "18T", "19T", "18T", "18T", "18T", "19T", 
                                   "18T", NA, "19T", "19T", "18T", "19T", "18T", "19T", "18T", "19T", 
                                   "19T", "19T", "18T", "19T", "18T", "18T", "18T"))
-  # consolidate all the site info into 1 table
+
+  
+## consolidate all the sites into one table
 sites<-full_join(sites_sop,sites_sam,by=c("site.code","State"))%>%
   full_join(sites_kate,by=c("site.code","State"))%>%
+  # remove any duplicate sites across the different sources
   distinct(site.code,.keep_all = T)
 
-  # get UTM zones for each site
-    # Greater than 72 D Longitude is zone 18, less than that is zone 19
+
+## Assign UTM zones to each site
+    # Greater than 72 degrees Longitude is zone 18, less than that is zone 19
     # CT is the only state split between zones 18 and 19, so we will assign CT sites once we fix the coordinates in following sections
     # for now assign zones to sites in states that are completely within 1 zone
 sites <- sites%>%
@@ -90,22 +107,23 @@ sites <- sites%>%
 
 
 
-## Address missing records between nest locations, fates, and sites data
+## 3. Address missing records between nest locations, fates, and sites data
 # -----------------------------------------------------------------------
 
-# Not all nest location records have nest fate records
+# Not all nests in the location records have nest fate records
 missing_fates<-nests%>%
   filter(!(id%in%fates$id))
-nrow(missing_fates)
-
+nrow(missing_fates)# number of nests missing fates
+  # write this list to file for documentation
 if(!file.exists(paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/nests_missing_fatedata.csv"))){
 write.csv(missing_fates,paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/nests_missing_fatedata.csv"), row.names = F)
 }
 
-# 44 nest fates are missing location data
+
+# Not all nests in the fate records have location data 
 missing_locations<-fates%>%
   filter(!(id%in%nests$id))
-nrow(missing_locations)
+nrow(missing_locations) #(44 nest fates are missing location data)
 fates[fates$id%in%missing_locations$id,]$missing.location.rec<-1
 # this removes 38 fate records from site WB and 5 records with NA site codes
 #fates<-fates%>%
@@ -113,10 +131,11 @@ fates[fates$id%in%missing_locations$id,]$missing.location.rec<-1
 
 
 
-# Site codes missing site location information - see if SHARP folks know where these are
+# Site codes missing site information (site name, state, and zone) - see if SHARP folks know where these are
 missing_states<- nests%>%
   filter(!(site.code%in%sites$site.code))%>%
   distinct(site.code,.keep_all = T)
+  # mark with our editing flag defined above
 fates[fates$id%in%missing_states$id,]$missing.site.info<-1
 
 # Can some site names be merged?
@@ -127,14 +146,16 @@ write.csv(site_list, paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/n
 }
 
 
-## merge nest fates and locations
+
+
+## 4. merge nest fates and locations
 # -------------------------------------------
 dat1<-left_join(fates,nests,by="id")
 
-# Fix site name discrepancies
-# merge AT and ATT, BI and Barn Island, HM and Hammo, OC and Oyster creek - doesn't seem to be an issue in this dataset
-unique(dat1$site.code)
-# WA site is actually BI change the one record
+# Fix any site name discrepancies (different codes for the same site)
+# merge AT and ATT, BI and Barn Island, HM and Hammo, OC and Oyster creek 
+unique(dat1$site.code) #- doesn't seem to be an issue in this dataset
+# site "WA" is actually "BI", change the one record
 dat1<-dat1%>%
   mutate(site.code = ifelse(
     substr(site.code, start=1,stop=2)=="WA","BI",site.code),
@@ -146,42 +167,44 @@ dat1<-dat1%>%
 
 
 
-## Spatial formatting
+## 5. Spatial formatting
 # -------------------------------------------
 
 ## A) Identify nest locations missing coordinates
-
+######
 # For Nests with location data
       # only keep records with a full set of UTM or lat long coordinate pairs
 dat2<-filter(dat1,(if_all(c(Easting,Northing), ~ !is.na(.))|if_all(c(Lat,Long), ~ !is.na(.))))%>%
-      # also remove coordinates that are 0 or small values (less than 30, likely typos)
+      # also remove coordinates that are 0 or small values (if a coordinate is less than 30, it's likely a typo)
       filter(if_any(c(Easting,Northing,Lat,Long), ~ .>30))
 
-# Nests missing coordinates (402)
-#missing_coords<-dat1%>%
-#  filter(!(id%in%dat2$id))
+
 
 #Mark records as missing coordinates only if they have location records.
 dat1[!(dat1$id%in%dat2$id),]$missing.coords<-1
 dat1[dat1$missing.location.rec==1,]$missing.coords<-0
 
-nrow(dat1[dat1$missing.coords==1,])
+nrow(dat1[dat1$missing.coords==1,]) # 402 nests with location records are missing coordinates
 
 
-## B) Assign coordinates to the correct coordinate system (batch conversions)
 
-# range of longitude (E-W) for eastern coastline should be -67(Maine) to -79 (Virginia) DD
-# range of latitude (N-S) should be 45 (Maine) to 36 (Virginia) DD 
-# DD outside this range are likely typos
 
-#B-1) Batch conversion of Degrees Decimal Minutes records (ONLY the case for NJ sites AT, OC, and MW in 2014 and 2015)
+## B) Batch edit nest coordinate information with typos
+######
+# range of longitude (E-W) for eastern coastline should be -67 (Maine) to -79 (Virginia) in Decimal Degrees
+# range of latitude (N-S) should be 45 (Maine) to 36 (Virginia) Decimal Degrees 
+# Decimal Degree values (latitude/longitude) outside this range are likely typos
+
+
+
+#B-1) Convert Degrees Decimal Minutes records  to Decimal Degrees (DDs) (ONLY the case for NJ sites AT, OC, and MW in 2014 and 2015)
 
 dat3<-dat1%>%
   # For records with coordinate information...
   filter(missing.coords!=1 & missing.location.rec!=1 & 
              # and sites AT, OC, or MW in 2014...
              (site.code %in% c("AT","OC","MW") & Year==2014))%>%
-         #convert to DDs
+         #convert to DDs - add a decimal after first 2 digits and divide the remaining digits by 60
   mutate(Long=as.numeric(substr(Easting,1,2))+(as.numeric(paste0(substr(Easting,3,4),".",substr(Easting,5,length(Easting))))/60),
          Lat=as.numeric(substr(Northing,1,2))+(as.numeric(paste0(substr(Northing,3,4),".",substr(Northing,5,length(Northing))))/60),
          #then remove the original values from the UTM coordinate columns
@@ -190,10 +213,16 @@ dat3<-dat1%>%
          #mark which edits were made
          batch_DecMin_DD=1)
 
+    # replace the records with their new edits
 dat1<-rbind(dat3,dat1[!(dat1$id%in%dat3$id),])
 
-#2014 plotting shifted NE after conversion, slight systematic error remaining
-#look at Sam's original data files
+
+
+
+#B-2) Remove the remaining spatial shift in 2014 NJ sites
+
+#2014 NJ records are still shifted Northeast after DDs conversion, slight systematic error remaining
+#look at Sam R's original data files for NJ sites
 NJ14<-read.csv(paste0(dat_path,"SESP 2011-2015.csv"))%>%
   dplyr::select(id=ID,Lat2=LAT,Long2=LONG,Year=YEAR)
 NJ14<-read.csv(paste0(dat_path,"SALS 2011-2015.csv"))%>%
@@ -235,7 +264,8 @@ dat1<-dat1%>%
   
 
 
-    # repeat DD conversion for records with lat/long reversed: At, OC, and MW in 2015
+
+# B-3) repeat Decimal Minute to Decimal Degree conversion for records with lat/long reversed: sites AT, OC, and MW in 2015
 dat4<-dat1%>%
     # For records with coordinate information...
     filter(missing.coords!=1 & missing.location.rec!=1 & 
@@ -251,7 +281,9 @@ dat4<-dat1%>%
 dat1<-rbind(dat4,dat1[!(dat1$id%in%dat4$id),])
 
 
-# B-2) Batch conversion of UTM coords that are actually DD missing decimals (Checked plotting as original UTMs and converting dMin to DD, neither worked) 
+
+
+# B-4) Add a missing decimal to Decimal Degree coordinates (Checked plotting as UTMs and converting dMin to DD, neither worked) 
 ## HM, ER, BI, JC, SP, 2014 and HM, BI, ER 2015 are DD missing decimals.
 dat5<-dat1%>%
   # For records with coordinate information...
@@ -274,7 +306,7 @@ dat1<-rbind(dat5,dat1[!(dat1$id%in%dat5$id),])
 
 
 
-# B -3) Move DD data in easting/westing columns into long/lat columns
+# B-5) Move Decimal Degree data in UTM easting/westing columns into long/lat columns
 dat6<-dat1%>%
   # if Lat is missing and Easting is using values in Latitude range
   filter(abs(Easting)<46 & abs(Easting)>36 & is.na(Lat))%>%
@@ -313,7 +345,10 @@ dat10<-rbind(dat8,dat9)%>%
 
 dat1<-rbind(dat10,dat1[!(dat1$id%in%dat10$id),])
       
-# B -4) label the coordinate system and unit for all these nests as Decimal Degrees and all other nests as UTM
+
+
+
+# B-6) label the coordinate system and unit for nests as Decimal Degrees or as UTM
 dat1<-dat1%>%
            mutate(Coordinate.System=case_when(
            (if_all(c(Lat,Long),~!is.na(.)) & missing.coords!=1) ~"Lat/Long(DD)",
@@ -323,8 +358,9 @@ dat1<-dat1%>%
 
 
 
-## C) Fill in remaining missing UTM zones for CT. Longitude >= 72 DD is zone 18 <72 is zone 19
 
+## C) Fill in remaining missing UTM zones for CT. Longitude >= 72 DD is zone 18 <72 is zone 19
+######
 calc_zones <- dat1 %>% 
   filter(!is.na(Long)|Long=="NOT REC")%>%
   mutate(utm.zone=case_when(
@@ -347,20 +383,26 @@ dat1<-left_join(dat1,sites,by=c("site.code"))%>%
   dplyr::select(-c("utm.zone.x","utm.zone.y","coord.system"))
   
 
-#Make sure all longitude values are negative
+
+
+## D) Make sure all longitude values are negative
+######
 dat1<-dat1%>%
   mutate(Long=ifelse(Long!="NOT REC", -abs(as.numeric(Long)), Long))
 
 
-## Plot Data
-# -------------------------------------------
 
-# get coordinate systems and convert coordinates to spatial data
+
+
+## 4. Plot the nest data to look for any remaining coordinate errors
+# -----------------------------------------------------------------------------
+
+# get coordinate systems
 utm18<- "+proj=utm +zone=18 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 utm19<- "+proj=utm +zone=19 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 nad<-"+proj=longlat +ellps=GRS80 +datum=NAD83 +no_defs"
 
-#convert to spatial points
+#convert coordinate columns to spatial points
 plots_utm18 <- st_as_sf(filter(dat1,utm.zone=="18T"& Coordinate.System=="UTM(m)"), coords = c("Easting", "Northing"), crs = utm18)%>%
   st_transform(nad)
 
@@ -375,18 +417,18 @@ plots<-rbind(plots_utm18,plots_utm19,plots_latlong)%>%
 
 
 
-#admin boundaries
+# administrative boundaries, for spatial reference
 data(us_states)
 ne<-filter(us_states,REGION=="Norteast")
 
-#Marsh boundaries
+#Marsh boundaries, for spatial reference
 marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))#uvvr overall mean dataset that I transformed coordinate systems in Arc
 
 #plot nest sites
 tm_shape(ne) + tm_borders() +
 tm_shape(plots) + tm_dots()
 
-#Mark as error if plotting outside marsh layer (UVVR)
+#Mark as error if nest is plotting outside marsh layer (using UVVR since its a rasterized version of national wetland inventory tidal marsh polygons)
 plots<-terra::extract(marsh,vect(plots),bind=T)%>%
   sf::st_as_sf()%>%
   mutate(coord.typo=ifelse(
@@ -395,10 +437,10 @@ plots<-terra::extract(marsh,vect(plots),bind=T)%>%
   dplyr::select(-uvvr_mean_utm18_2)
 
 
-# QA/QC error flag edits in Arc ** find a reproducable way of doing this in R 
+# QA/QC error flag edits in ArcPro ** find a reproducible way of doing this in R 
 st_write(plots,
          paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))
-# (removed error flags around nest points on marsh border and added to nests plotting at the wrong site) 
+# (removed error flags around nest points on marsh border and added error flags to nests plotting at the wrong site) 
 error_edits<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))%>%
   st_drop_geometry()%>%
   dplyr::select(id,crd_typ)
@@ -410,7 +452,7 @@ plots<-plots%>%
 
 
 
-## Writing outputs
+## 5. Write outputs to file
 #--------------------------------------------
 
 #nest points shapefile and kml file
@@ -423,7 +465,8 @@ st_write(output_shp,
 st_write(output_shp,
          paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.kml"), delete_layer =T)
 
-#nest coordinate info csv
+
+#nest coordinate csv
 output_csv<-dplyr::select(plots,id,coord.typo)%>%
   st_drop_geometry()%>%
   right_join(dplyr::select(dat1,-c("coord.typo")),by="id")%>%
@@ -448,6 +491,7 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/new_nest_coords_12_9_22.cs
 write.csv(output_csv,paste0(path_out,"Intermediate_outputs/new_nest_coords_12_9_22.csv"),row.names = F)
 }
 
+
 #Site table info
 output_site<-output_csv%>%
   dplyr::select(site.code,Site,State,utm.zone)%>%
@@ -459,6 +503,7 @@ output_site<-output_csv%>%
   dplyr::select(-c("utm.zone.x","utm.zone.y"))
 
 write.csv(output_site,paste0(path_out,"Final_outputs/compiled_site_table_12_9_22.csv"),row.names = F)
+
 
 # error tally
 t<-summarise(output_csv,
