@@ -124,6 +124,9 @@ for (i in 1:length(model.names)){ #for each model
   eval.tab[i, "kappa.s.sd"]<-round(sd(temp.kappa.s,na.rm=T),3) # alternatively use SE ", 95% CI ",round(mean(auc_p)+1.96*(sd(auc_p)/length(auc_p)),3),"-",round(mean(auc_p)-1.96*(sd(auc_p)/length(auc_p)),3))
 
 }
+
+write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_",ab_type,".csv"), row.names = F)
+
 # BRT has the best performance across all metrics. 
 # In general worse predictions for survival. 
 # Both survival and presence have better discrimination than calibration.
@@ -134,7 +137,7 @@ for (i in 1:length(model.names)){ #for each model
 #---------------------------------------------------------------------------------------------------------------------------------
 ## nest presence
   # first compare across models
-disc_p_brt<-ggplot(test_p,aes(BRTs,color=as.factor(obs),fill=as.factor(obs)))+
+disc_p_brt<-ggplot(d.pres[[1]],aes(BRTs,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
   scale_color_viridis_d(end=0.75)+
@@ -145,7 +148,7 @@ disc_p_brt<-ggplot(test_p,aes(BRTs,color=as.factor(obs),fill=as.factor(obs)))+
        color="Observed Nest Site",
        y="",
        title=paste0("BRTs (AUC = ",eval.tab[1,"auc.p"],", MaxKappa = ",eval.tab[1,"kappa.p"],", TSS = ",eval.tab[1,"tss.p"],")"))
-disc_p_mxt<-ggplot(test_p,aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
+disc_p_mxt<-ggplot(d.pres[[1]],aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
   scale_color_viridis_d(end=0.75)+
@@ -156,7 +159,7 @@ disc_p_mxt<-ggplot(test_p,aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
        color="Observed Nest Site",
        y="Density of Observations",
        title=paste0("Maxent (AUC = ",eval.tab[2,"auc.p"],", MaxKappa = ",eval.tab[2,"kappa.p"],", TSS = ",eval.tab[2,"tss.p"],")"))
-disc_p_glm<-ggplot(test_p,aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
+disc_p_glm<-ggplot(d.pres[[1]],aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
   scale_color_viridis_d(end=0.75)+
@@ -169,7 +172,7 @@ disc_p_glm<-ggplot(test_p,aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
        title=paste0("GLM (AUC = ",eval.tab[3,"auc.p"],", MaxKappa = ",eval.tab[3,"kappa.p"],", TSS = ",eval.tab[3,"tss.p"],")"))
 (disc_p_brt/disc_p_mxt/disc_p_glm)+
   plot_layout(guides = "collect")+
-  plot_annotation(title=paste0("N=",nrow(pres_dat[pres_dat$group!=5&pres_dat$y==1,]),", Prevalance = ",round(nrow(pres_dat[pres_dat$group!=5&pres_dat$y==1,])/nrow(pres_dat[pres_dat$group!=5,]),2)))
+  plot_annotation(title=paste0("N=",nrow(pres_dat[pres_dat$group!=1&pres_dat$y==1,]),", Prevalance = ",round(nrow(pres_dat[pres_dat$group!=1&pres_dat$y==1,])/nrow(pres_dat[pres_dat$group!=1,]),2)))
 
 
 ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_pres_",ab_type,".jpeg"),
@@ -177,14 +180,15 @@ ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_pres_
 
 
   # then for the best model, compare across regions
-pres_regions<-d.pres[[5]]%>%
+pres_regions<-d.pres[[1]]%>%
   left_join(pres_dat[,c("id","region")],by="id")%>%
   mutate(y=ifelse(obs==0,"Absent","Present"),
          region=case_when(region==1~"Maine",
                           region==3~"Connecticut",
                           region==4~"New York/Long Island",
                           region==5~ "New Jersey"),
-         region= factor(region,levels=c("Maine","Connecticut","New York/Long Island", "New Jersey")))
+         region= factor(region,levels=c("Maine","Connecticut","New York/Long Island", "New Jersey")))%>%
+  filter(!is.na(region))
 
 disc_p_regions<-ggplot(pres_regions,aes(BRTs,color=as.factor(y),fill=as.factor(y)))+
   geom_density(alpha=0.5,adjust=1)+
@@ -202,7 +206,7 @@ ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_pres_",
 
 
 ## nest survival
-disc_s_brt<-ggplot(test_s,aes(BRTs,color=as.factor(obs),fill=as.factor(obs)))+
+disc_s_brt<-ggplot(d.surv[[1]],aes(BRTs,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
   scale_color_viridis_d(end=0.75)+
@@ -213,7 +217,7 @@ disc_s_brt<-ggplot(test_s,aes(BRTs,color=as.factor(obs),fill=as.factor(obs)))+
        color="Observed Nest Success",
        y="",
        title=paste0("BRTs (AUC = ",eval.tab[1,"auc.s"],", MaxKappa = ",eval.tab[1,"kappa.s"],", TSS = ",eval.tab[1,"tss.s"],")"))
-disc_s_mxt<-ggplot(test_s,aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
+disc_s_mxt<-ggplot(d.surv[[1]],aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
   scale_color_viridis_d(end=0.75)+
@@ -224,7 +228,7 @@ disc_s_mxt<-ggplot(test_s,aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
        color="Observed Nest Success",
        y="Density of Observations",
        title=paste0("Maxent (AUC = ",eval.tab[2,"auc.s"],", MaxKappa = ",eval.tab[2,"kappa.s"],", TSS = ",eval.tab[2,"tss.s"],")"))
-disc_s_glm<-ggplot(test_s,aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
+disc_s_glm<-ggplot(d.surv[[1]],aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
   scale_color_viridis_d(end=0.75)+
@@ -237,7 +241,7 @@ disc_s_glm<-ggplot(test_s,aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
        title=paste0("GLM (AUC = ",eval.tab[3,"auc.s"],", MaxKappa = ",eval.tab[3,"kappa.s"],", TSS = ",eval.tab[3,"tss.s"],")"))
 (disc_s_brt/disc_s_mxt/disc_s_glm)+
   plot_layout(guides = "collect")+
-  plot_annotation(title=paste0("N=",nrow(surv_dat[surv_dat$group!=5&surv_dat$y==1,]),", Prevalance = ",round(nrow(surv_dat[surv_dat$group!=5&surv_dat$y==1,])/nrow(surv_dat[surv_dat$group!=5,]),2)))
+  plot_annotation(title=paste0("N=",nrow(surv_dat[surv_dat$group!=1&surv_dat$y==1,]),", Prevalance = ",round(nrow(surv_dat[surv_dat$group!=1&surv_dat$y==1,])/nrow(surv_dat[surv_dat$group!=1,]),2)))
 
 ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_surv_",ab_type,".jpeg"),
        width=8,height=10,dpi=300,units = "in")
@@ -270,6 +274,7 @@ ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_surv_",
 
 
 #AUC plots
+jpeg(paste0(path_out,"Final_outputs/Model_Results/AUC_plots_",ab_type,".jpeg"))
 par(oma = c(0, 0, 0, 0), mfrow = c(1, 2), cex = 0.7, cex.lab = 1.5)
 
 auc.roc.plot(d.pres[[5]], which.model=1,color = T, legend.cex = 0.4, mark=5,main="")
@@ -281,7 +286,7 @@ mtext("Survival", side = 3, line = 2.5, cex = 1.6)
 mtext(paste0("(", round(nrow(surv_dat[surv_dat$group!=5&surv_dat$y==1,])/nrow(surv_dat[surv_dat$group!=5,]),2),
              " Prevalence )"), side = 3, line = 0.5, cex = 1.3)
 
-
+dev.off()
 
 
 
@@ -291,6 +296,7 @@ mtext(paste0("(", round(nrow(surv_dat[surv_dat$group!=5&surv_dat$y==1,])/nrow(su
 # groups locations into bins based on their predicted probabilities
 # then calculates the ratio of observations with presence vs total observations in that bin
 # gives confidence interval for each bin and N of observations in each bin
+jpeg(paste0(path_out,"Final_outputs/Model_Results/calibration_plots_",ab_type,".jpeg"))
 par(oma = c(0, 5, 0, 0), mar = c(3, 3, 3, 1), mfrow = c(2,3), cex = 0.7, cex.lab = 1.4, mgp = c(2, 0.5, 0))
 
   for (mod in 1:3) {
@@ -316,7 +322,7 @@ mtext("Predicted Probability of Occurrence", side = 1, line = -1,
 mtext("Observed Occurrence as Proportion of Sites Surveyed",
           side = 2, line = -1, cex = 1.4, outer = TRUE)
 
-
+dev.off()
 
 
 
@@ -353,3 +359,4 @@ p6<-ggerrorplot(var_s, x = "var", y = "importance",
 
 ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_",ab_type,"_brt.png"),
        width=8,height=8,dpi=300,units = "in")
+
