@@ -125,14 +125,14 @@ find.int.surv <- gbm.interactions(brt_surv)
   #lists the top interactions and plots them
   # for presence
 int.pres[[i]]<-find.int.pres$rank.list 
-var1<-find.int.pres$rank.list[1,"var1.index"]
-var2<-find.int.pres$rank.list[1,"var2.index"]
+var1<-find.int.pres$rank.list[2,"var1.index"]
+var2<-find.int.pres$rank.list[2,"var2.index"]
 gbm.perspec(brt_pres, var1, var2) #3d plots the interactions with fitted values
 int.plots.pres[[i]]<-recordPlot()
   # for survival
 int.surv[[i]]<-find.int.surv$rank.list 
-var1<-find.int.surv$rank.list[1,"var1.index"]
-var2<-find.int.surv$rank.list[1,"var2.index"]
+var1<-find.int.surv$rank.list[2,"var1.index"]
+var2<-find.int.surv$rank.list[2,"var2.index"]
 gbm.perspec(brt_surv, var1, var2)
 int.plots.surv[[i]]<-recordPlot()
 
