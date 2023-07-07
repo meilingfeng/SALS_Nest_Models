@@ -11,11 +11,6 @@ if(!exists("pres_dat")){
 
 ## 1. Select model 
 #------------------------------------------
-p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca","ndvi")))],collapse = "+"),"+HIMARSH*ndvi+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
-  # for pres, keeps all
-s.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","ndvi")))],collapse = "+"),"+HIMARSH*ndvi")), surv_dat,family=binomial(link = "logit")))
-  # for surv, removes ent_txt, uvvr_mean, ndvi - use cor and diff instead for these
-  #Use proportion of high marsh instead of high marsh at nest center - error in nest location and resolution uncertainty in veg layer
 
 
 ## Start a list of potential models
@@ -52,156 +47,214 @@ mod_list_pres1[[3]]<-glm(y~uvvr_mean,
 mod_list_surv1[[3]]<-glm(y~uvvr_diff, 
                          data=surv_dat,
                          family = binomial(link="logit"))
-# UVVR
+# texture
 mod_list_pres1[[4]]<-glm(y~ent_txt, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[4]]<-glm(y~cor_txt, 
+mod_list_surv1[[4]]<-glm(y~ent_txt, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+mod_list_pres1[[5]]<-glm(y~cor_txt, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[5]]<-glm(y~cor_txt, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+# tide restriction
+mod_list_pres1[[6]]<-glm(y~tideres, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[6]]<-glm(y~tideres, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
 # HIGH MARSH
-mod_list_pres1[[5]]<-glm(y~HIMARSH, 
+mod_list_pres1[[7]]<-glm(y~HIMARSH, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv1[[5]]<-glm(y~HIMARSH, 
+mod_list_surv1[[7]]<-glm(y~HIMARSH, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 #Does adding NDVI or UVVR or PCA improve high marsh?
 # HIGH MARSH +NDVI
-mod_list_pres1[[6]]<-glm(y~HIMARSH+ndvi, 
+mod_list_pres1[[8]]<-glm(y~HIMARSH+ndvi, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[6]]<-glm(y~HIMARSH+ndvi, 
+mod_list_surv1[[8]]<-glm(y~HIMARSH+ndvi, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 # HIGH MARSH + UVVR
-mod_list_pres1[[7]]<-glm(y~HIMARSH+uvvr_mean, 
+mod_list_pres1[[9]]<-glm(y~HIMARSH+uvvr_mean, 
                           data=pres_dat,
                           family = binomial(link="logit"))
-mod_list_surv1[[7]]<-glm(y~HIMARSH+uvvr_diff, 
+mod_list_surv1[[9]]<-glm(y~HIMARSH+uvvr_diff, 
                           data=surv_dat,
                           family = binomial(link="logit"))
 # HIGH MARSH + PCA
-mod_list_pres1[[8]]<-glm(y~HIMARSH+pca, 
+mod_list_pres1[[10]]<-glm(y~HIMARSH+pca, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[8]]<-glm(y~HIMARSH+pca, 
+mod_list_surv1[[10]]<-glm(y~HIMARSH+pca, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 # HIGH MARSH + texture
-mod_list_pres1[[9]]<-glm(y~HIMARSH+ent_txt, 
+mod_list_pres1[[11]]<-glm(y~HIMARSH+ent_txt, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[9]]<-glm(y~HIMARSH+cor_txt, 
+mod_list_surv1[[11]]<-glm(y~HIMARSH+cor_txt, 
                          data=surv_dat,
                          family = binomial(link="logit"))
+mod_list_pres1[[12]]<-glm(y~HIMARSH+ent_txt, 
+                          data=pres_dat,
+                          family = binomial(link="logit"))
+mod_list_surv1[[12]]<-glm(y~HIMARSH+cor_txt, 
+                          data=surv_dat,
+                          family = binomial(link="logit"))
+#HIGH MARSH + TIDE RESTRICTIONS
+mod_list_pres1[[13]]<-glm(y~HIMARSH+ent_txt, 
+                          data=pres_dat,
+                          family = binomial(link="logit"))
+mod_list_surv1[[13]]<-glm(y~HIMARSH+cor_txt, 
+                          data=surv_dat,
+                          family = binomial(link="logit"))
 
 # ALL
-mod_list_pres1[[10]]<-glm(y~ndvi+uvvr_mean+pca+ent_txt+HIMARSH, 
+mod_list_pres1[[14]]<-glm(y~ndvi+uvvr_mean+pca+ent_txt+cor_txt+tideres+HIMARSH, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[10]]<-glm(y~ndvi+uvvr_diff+pca+cor_txt+HIMARSH,
+mod_list_surv1[[14]]<-glm(y~ndvi+uvvr_diff+pca+cor_txt+HIMARSH,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
 
 
 # store model selection factors in a table
-mod_tab_habstr<-data.frame(response=rep(c("Presence","Success"),length(mod_list_pres1)),
-                           class=rep("Additional Habitat Characteristics",2*length(mod_list_pres1)),
-                           name=rep(NA,2*length(mod_list_pres1)),
-                           fun=rep(NA,2*length(mod_list_pres1)),
+mod_tab_habstr<-data.frame(Response=rep(c("Presence","Success"),length(mod_list_pres1)),
+                           Model_Comparison=rep("Additional Habitat Characteristics",2*length(mod_list_pres1)),
+                           Model_Name=rep(NA,2*length(mod_list_pres1)),
+                           Function=rep(NA,2*length(mod_list_pres1)),
                            AIC=rep(NA,2*length(mod_list_pres1)),
                            dAIC=rep(NA,2*length(mod_list_pres1)))
 
-mod_tab_habstr[1,"name"]<-"Vegetation Health (NDVI)"
-mod_tab_habstr[1,"fun"]<-deparse1(mod_list_pres1[[1]]$formula)
+mod_tab_habstr[1,"Model_Name"]<-"Vegetation Health (NDVI)"
+mod_tab_habstr[1,"Function"]<-deparse1(mod_list_pres1[[1]]$formula)
 mod_tab_habstr[1,"AIC"]<-mod_list_pres1[[1]]$aic
 
-mod_tab_habstr[2,"name"]<-"Vegetation Health (NDVI)"
-mod_tab_habstr[2,"fun"]<-deparse1(mod_list_surv1[[1]]$formula)
+mod_tab_habstr[2,"Model_Name"]<-"Vegetation Health (NDVI)"
+mod_tab_habstr[2,"Function"]<-deparse1(mod_list_surv1[[1]]$formula)
 mod_tab_habstr[2,"AIC"]<-mod_list_surv1[[1]]$aic
 
-mod_tab_habstr[3,"name"]<-"Raw Reflectance (PCA)"
-mod_tab_habstr[3,"fun"]<-deparse1(mod_list_pres1[[2]]$formula)
+mod_tab_habstr[3,"Model_Name"]<-"Raw Reflectance (PCA)"
+mod_tab_habstr[3,"Function"]<-deparse1(mod_list_pres1[[2]]$formula)
 mod_tab_habstr[3,"AIC"]<-mod_list_pres1[[2]]$aic
 
-mod_tab_habstr[4,"name"]<-"Raw Reflectance (PCA)"
-mod_tab_habstr[4,"fun"]<-deparse1(mod_list_surv1[[2]]$formula)
+mod_tab_habstr[4,"Model_Name"]<-"Raw Reflectance (PCA)"
+mod_tab_habstr[4,"Function"]<-deparse1(mod_list_surv1[[2]]$formula)
 mod_tab_habstr[4,"AIC"]<-mod_list_surv1[[2]]$aic
 
-mod_tab_habstr[5,"name"]<-"Marsh Resilience (UVVR)"
-mod_tab_habstr[5,"fun"]<-deparse1(mod_list_pres1[[3]]$formula)
+mod_tab_habstr[5,"Model_Name"]<-"Marsh Resilience (UVVR)"
+mod_tab_habstr[5,"Function"]<-deparse1(mod_list_pres1[[3]]$formula)
 mod_tab_habstr[5,"AIC"]<-mod_list_pres1[[3]]$aic
 
-mod_tab_habstr[6,"name"]<-"Marsh Resilience (UVVR)"
-mod_tab_habstr[6,"fun"]<-deparse1(mod_list_surv1[[3]]$formula)
+mod_tab_habstr[6,"Model_Name"]<-"Marsh Resilience (UVVR)"
+mod_tab_habstr[6,"Function"]<-deparse1(mod_list_surv1[[3]]$formula)
 mod_tab_habstr[6,"AIC"]<-mod_list_surv1[[3]]$aic
 
-mod_tab_habstr[7,"name"]<-"Texture"
-mod_tab_habstr[7,"fun"]<-deparse1(mod_list_pres1[[4]]$formula)
+mod_tab_habstr[7,"Model_Name"]<-"Texture (Dissimiarlity)"
+mod_tab_habstr[7,"Function"]<-deparse1(mod_list_pres1[[4]]$formula)
 mod_tab_habstr[7,"AIC"]<-mod_list_pres1[[4]]$aic
 
-mod_tab_habstr[8,"name"]<-"Texture"
-mod_tab_habstr[8,"fun"]<-deparse1(mod_list_surv1[[4]]$formula)
+mod_tab_habstr[8,"Model_Name"]<-"Texture (Dissimilarity)"
+mod_tab_habstr[8,"Function"]<-deparse1(mod_list_surv1[[4]]$formula)
 mod_tab_habstr[8,"AIC"]<-mod_list_surv1[[4]]$aic
 
-mod_tab_habstr[9,"name"]<-"High Marsh"
-mod_tab_habstr[9,"fun"]<-deparse1(mod_list_pres1[[5]]$formula)
+mod_tab_habstr[9,"Model_Name"]<-"Texture (Similarity)"
+mod_tab_habstr[9,"Function"]<-deparse1(mod_list_pres1[[5]]$formula)
 mod_tab_habstr[9,"AIC"]<-mod_list_pres1[[5]]$aic
 
-mod_tab_habstr[10,"name"]<-"High Marsh"
-mod_tab_habstr[10,"fun"]<-deparse1(mod_list_surv1[[5]]$formula)
+mod_tab_habstr[10,"Model_Name"]<-"Texture (Similarity)"
+mod_tab_habstr[10,"Function"]<-deparse1(mod_list_surv1[[5]]$formula)
 mod_tab_habstr[10,"AIC"]<-mod_list_surv1[[5]]$aic
 
-mod_tab_habstr[11,"name"]<-"High Marsh + NDVI"
-mod_tab_habstr[11,"fun"]<-deparse1(mod_list_pres1[[6]]$formula)
+mod_tab_habstr[11,"Model_Name"]<-"Tidal Restrictions"
+mod_tab_habstr[11,"Function"]<-deparse1(mod_list_pres1[[6]]$formula)
 mod_tab_habstr[11,"AIC"]<-mod_list_pres1[[6]]$aic
 
-mod_tab_habstr[12,"name"]<-"High Marsh + NDVI"
-mod_tab_habstr[12,"fun"]<-deparse1(mod_list_surv1[[6]]$formula)
+mod_tab_habstr[12,"Model_Name"]<-"Tidal Restrictions"
+mod_tab_habstr[12,"Function"]<-deparse1(mod_list_surv1[[6]]$formula)
 mod_tab_habstr[12,"AIC"]<-mod_list_surv1[[6]]$aic
 
-mod_tab_habstr[13,"name"]<-"High Marsh + UVVR"
-mod_tab_habstr[13,"fun"]<-deparse1(mod_list_pres1[[7]]$formula)
+mod_tab_habstr[13,"Model_Name"]<-"High Marsh"
+mod_tab_habstr[13,"Function"]<-deparse1(mod_list_pres1[[7]]$formula)
 mod_tab_habstr[13,"AIC"]<-mod_list_pres1[[7]]$aic
 
-mod_tab_habstr[14,"name"]<-"High Marsh + UVVR"
-mod_tab_habstr[14,"fun"]<-deparse1(mod_list_surv1[[7]]$formula)
+mod_tab_habstr[14,"Model_Name"]<-"High Marsh"
+mod_tab_habstr[14,"Function"]<-deparse1(mod_list_surv1[[7]]$formula)
 mod_tab_habstr[14,"AIC"]<-mod_list_surv1[[7]]$aic
 
-
-mod_tab_habstr[15,"name"]<-"High Marsh + PCA"
-mod_tab_habstr[15,"fun"]<-deparse1(mod_list_pres1[[8]]$formula)
+mod_tab_habstr[15,"Model_Name"]<-"High Marsh + NDVI"
+mod_tab_habstr[15,"Function"]<-deparse1(mod_list_pres1[[8]]$formula)
 mod_tab_habstr[15,"AIC"]<-mod_list_pres1[[8]]$aic
 
-mod_tab_habstr[16,"name"]<-"High Marsh + PCA"
-mod_tab_habstr[16,"fun"]<-deparse1(mod_list_surv1[[8]]$formula)
+mod_tab_habstr[16,"Model_Name"]<-"High Marsh + NDVI"
+mod_tab_habstr[16,"Function"]<-deparse1(mod_list_surv1[[8]]$formula)
 mod_tab_habstr[16,"AIC"]<-mod_list_surv1[[8]]$aic
 
-
-mod_tab_habstr[17,"name"]<-"High Marsh + Texture"
-mod_tab_habstr[17,"fun"]<-deparse1(mod_list_pres1[[9]]$formula)
+mod_tab_habstr[17,"Model_Name"]<-"High Marsh + UVVR"
+mod_tab_habstr[17,"Function"]<-deparse1(mod_list_pres1[[9]]$formula)
 mod_tab_habstr[17,"AIC"]<-mod_list_pres1[[9]]$aic
 
-mod_tab_habstr[18,"name"]<-"High Marsh + Texture"
-mod_tab_habstr[18,"fun"]<-deparse1(mod_list_surv1[[9]]$formula)
+mod_tab_habstr[18,"Model_Name"]<-"High Marsh + UVVR"
+mod_tab_habstr[18,"Function"]<-deparse1(mod_list_surv1[[9]]$formula)
 mod_tab_habstr[18,"AIC"]<-mod_list_surv1[[9]]$aic
 
-mod_tab_habstr[19,"name"]<-"Full Additional Habitat"
-mod_tab_habstr[19,"fun"]<-deparse1(mod_list_pres1[[10]]$formula)
+
+mod_tab_habstr[19,"Model_Name"]<-"High Marsh + PCA"
+mod_tab_habstr[19,"Function"]<-deparse1(mod_list_pres1[[10]]$formula)
 mod_tab_habstr[19,"AIC"]<-mod_list_pres1[[10]]$aic
 
-mod_tab_habstr[20,"name"]<-"Full Additional Habitat"
-mod_tab_habstr[20,"fun"]<-deparse1(mod_list_surv1[[10]]$formula)
+mod_tab_habstr[20,"Model_Name"]<-"High Marsh + PCA"
+mod_tab_habstr[20,"Function"]<-deparse1(mod_list_surv1[[10]]$formula)
 mod_tab_habstr[20,"AIC"]<-mod_list_surv1[[10]]$aic
 
 
-mod_tab_habstr<-group_by(mod_tab_habstr,response)%>%mutate(dAIC=AIC-min(AIC))%>%
+mod_tab_habstr[21,"Model_Name"]<-"High Marsh + Texture (Dissimilarity)"
+mod_tab_habstr[21,"Function"]<-deparse1(mod_list_pres1[[11]]$formula)
+mod_tab_habstr[21,"AIC"]<-mod_list_pres1[[11]]$aic
+
+mod_tab_habstr[22,"Model_Name"]<-"High Marsh + Texture (Dissimilarity)"
+mod_tab_habstr[22,"Function"]<-deparse1(mod_list_surv1[[11]]$formula)
+mod_tab_habstr[22,"AIC"]<-mod_list_surv1[[11]]$aic
+
+mod_tab_habstr[23,"Model_Name"]<-"High Marsh + Texture (Similarity)"
+mod_tab_habstr[23,"Function"]<-deparse1(mod_list_pres1[[12]]$formula)
+mod_tab_habstr[23,"AIC"]<-mod_list_pres1[[12]]$aic
+
+mod_tab_habstr[24,"Model_Name"]<-"High Marsh + Texture (Similarity)"
+mod_tab_habstr[24,"Function"]<-deparse1(mod_list_surv1[[12]]$formula)
+mod_tab_habstr[24,"AIC"]<-mod_list_surv1[[12]]$aic
+
+mod_tab_habstr[25,"Model_Name"]<-"High Marsh + Tidal Restrictions"
+mod_tab_habstr[25,"Function"]<-deparse1(mod_list_pres1[[13]]$formula)
+mod_tab_habstr[25,"AIC"]<-mod_list_pres1[[13]]$aic
+
+mod_tab_habstr[26,"Model_Name"]<-"High Marsh + Tidal Restrictions"
+mod_tab_habstr[26,"Function"]<-deparse1(mod_list_surv1[[13]]$formula)
+mod_tab_habstr[26,"AIC"]<-mod_list_surv1[[13]]$aic
+
+mod_tab_habstr[27,"Model_Name"]<-"Full Additional Habitat"
+mod_tab_habstr[27,"Function"]<-deparse1(mod_list_pres1[[14]]$formula)
+mod_tab_habstr[27,"AIC"]<-mod_list_pres1[[14]]$aic
+
+mod_tab_habstr[28,"Model_Name"]<-"Full Additional Habitat"
+mod_tab_habstr[28,"Function"]<-deparse1(mod_list_surv1[[14]]$formula)
+mod_tab_habstr[28,"AIC"]<-mod_list_surv1[[14]]$aic
+
+
+mod_tab_habstr<-group_by(mod_tab_habstr,Response)%>%mutate(dAIC=AIC-min(AIC))%>%
   ungroup()%>%
-  arrange(response,class,dAIC)
+  arrange(Response,Model_Comparison,dAIC)
 
 
 
@@ -225,83 +278,73 @@ mod_list_surv2[[1]]<-glm(y~HIMARSH*pca,
                         data=surv_dat,
                         family = binomial(link="logit"))
 
-# high marsh and NDVI
-mod_list_pres2[[2]]<-glm(y~HIMARSH*ndvi, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv2[[2]]<-glm(y~HIMARSH*ndvi, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
 
 #Do adding the interactions improve all habitat models?
-mod_list_pres2[[3]]<-glm(y~HIMARSH*ndvi+uvvr_mean+ent_txt+HIMARSH*pca, 
+mod_list_pres2[[2]]<-glm(y~uvvr_mean+uvvr_diff+cor_txt+tideres+ent_txt+HIMARSH*pca, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv2[[3]]<-glm(y~HIMARSH*ndvi+uvvr_diff+cor_txt+pca,
+mod_list_surv2[[2]]<-glm(y~uvvr_diff+uvvr_mean+ent_txt+tideres+cor_txt+HIMARSH*pca,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
 
 # store model selection factors in a table
-mod_tab_int<-data.frame(response=rep(c("Presence","Success"),length(mod_list_pres2)),
-                           class=rep("High Marsh Quality",2*length(mod_list_pres2)),
-                           name=rep(NA,2*length(mod_list_pres2)),
-                           fun=rep(NA,2*length(mod_list_pres2)),
+mod_tab_int<-data.frame(Response=rep(c("Presence","Success"),length(mod_list_pres2)),
+                           Model_Comparison=rep("High Marsh Quality",2*length(mod_list_pres2)),
+                           Model_Name=rep(NA,2*length(mod_list_pres2)),
+                           Function=rep(NA,2*length(mod_list_pres2)),
                            AIC=rep(NA,2*length(mod_list_pres2)),
                            dAIC=rep(NA,2*length(mod_list_pres2)))
 
-mod_tab_int[1,"name"]<-"High Marsh * Unclassified Habitat"
-mod_tab_int[1,"fun"]<-deparse1(mod_list_pres2[[1]]$formula)
+mod_tab_int[1,"Model_Name"]<-"High Marsh * Raw Reflectance"
+mod_tab_int[1,"Function"]<-deparse1(mod_list_pres2[[1]]$formula)
 mod_tab_int[1,"AIC"]<-mod_list_pres2[[1]]$aic
 
-mod_tab_int[2,"name"]<-"High Marsh * Unclassified Habitat"
-mod_tab_int[2,"fun"]<-deparse1(mod_list_surv2[[1]]$formula)
+mod_tab_int[2,"Model_Name"]<-"High Marsh * Raw Reflectance"
+mod_tab_int[2,"Function"]<-deparse1(mod_list_surv2[[1]]$formula)
 mod_tab_int[2,"AIC"]<-mod_list_surv2[[1]]$aic
 
-mod_tab_int[3,"name"]<-"High Marsh * NDVI"
-mod_tab_int[3,"fun"]<-deparse1(mod_list_pres2[[2]]$formula)
+mod_tab_int[3,"Model_Name"]<-"All Habitat with Interaction"
+mod_tab_int[3,"Function"]<-deparse1(mod_list_pres2[[2]]$formula)
 mod_tab_int[3,"AIC"]<-mod_list_pres2[[2]]$aic
 
-mod_tab_int[4,"name"]<-"High Marsh * NDVI"
-mod_tab_int[4,"fun"]<-deparse1(mod_list_surv2[[2]]$formula)
+mod_tab_int[4,"Model_Name"]<-"All Habitat with Interaction"
+mod_tab_int[4,"Function"]<-deparse1(mod_list_surv2[[2]]$formula)
 mod_tab_int[4,"AIC"]<-mod_list_surv2[[2]]$aic
 
-mod_tab_int[5,"name"]<-"All Habitat with Interaction"
-mod_tab_int[5,"fun"]<-deparse1(mod_list_pres2[[3]]$formula)
-mod_tab_int[5,"AIC"]<-mod_list_pres2[[3]]$aic
 
-mod_tab_int[6,"name"]<-"All Habitat with Interaction"
-mod_tab_int[6,"fun"]<-deparse1(mod_list_surv2[[3]]$formula)
-mod_tab_int[6,"AIC"]<-mod_list_surv2[[3]]$aic
-
-
-
-mod_tab_int<-group_by(mod_tab_int,response)%>%mutate(dAIC=AIC-min(AIC))%>%
+mod_tab_int<-group_by(mod_tab_int,Response)%>%mutate(dAIC=AIC-min(AIC))%>%
   ungroup()%>%
-  arrange(response,dAIC)
+  arrange(Response,dAIC)
 
 
 
 
 # compare models
 mod_tab<-rbind(mod_tab_habstr,mod_tab_int)%>%
-  group_by(response)%>%
-  mutate(overall_dAIC=AIC-min(AIC))%>%
-  arrange(response,class,dAIC)%>%
-  ungroup()
+  group_by(Response)%>%
+  mutate(ΔAIC_within_Model_Comparison=round(dAIC,1),
+         Overall_ΔAIC_across_Comparisons=round(AIC-min(AIC),1))%>%
+  arrange(Response,Model_Comparison,dAIC)%>%
+  ungroup()%>%
+  dplyr::select(-Function,-dAIC)
 
 write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"), row.names = F)
 
 
 # select the top ranked model based on AIC (any models within 2 delta AIC)
-mod_pres<-mod_tab[mod_tab$response=="Presence",]
+mod_pres<-mod_tab[mod_tab$Response=="Presence",]
 form_pres<-mod_pres[mod_pres$AIC==min(mod_pres$AIC),]$fun
 
-mod_surv<-mod_tab[mod_tab$response=="Success",]
+mod_surv<-mod_tab[mod_tab$Response=="Success",]
 form_surv<-mod_surv[mod_surv$AIC==min(mod_surv$AIC),]$fun
 
-
+# Use step function to find best model accounting for all combinations of variables
+p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
+# for pres, keeps all
+s.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), surv_dat,family=binomial(link = "logit")))
+# for surv, removes ent_txt, uvvr_mean, ndvi - use cor and diff instead for these
+#Use proportion of high marsh instead of high marsh at nest center - error in nest location and resolution uncertainty in veg layer
 
 
 
@@ -314,7 +357,7 @@ d.surv.glm<-list()
 for (i in 1:k) {
   train <- pres_dat[pres_dat$group != i,]
   test <- pres_dat[pres_dat$group == i,]
-  mod.p <- glm(form_pres, data = train, family = binomial(link = "logit"))
+  #mod.p <- glm(form_pres, data = train, family = binomial(link = "logit"))
   d.pres.glm[[i]] <- data.frame(id=test$id,
                                 obs=test$y, 
                                 pred=predict(mod.p,test, type="response"))
@@ -323,7 +366,7 @@ for (i in 1:k) {
 for (i in 1:k) {
   train <- surv_dat[surv_dat$group != i,]
   test <- surv_dat[surv_dat$group == i,]
-  mod.s <- glm(form_surv, data = train, family = binomial(link = "logit"))
+  #mod.s <- glm(form_surv, data = train, family = binomial(link = "logit"))
   d.surv.glm[[i]] <- data.frame(id=test$id,
                                 obs=test$y, 
                                 pred=predict(mod.s,test, type="response"))
