@@ -62,28 +62,20 @@ p1<-ggplot(pres_dat,aes(x=HIMARSH,y=pca,group=as.factor(y)))+
   geom_point(aes(color=as.factor(y)))+
   geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
   scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-  labs(color = "Nest Site", linetype= "Nest Site",y = "PC Spectral (RBG)", x="Proportion High Marsh") + 
+  labs(color = "Nest Site", linetype= "Nest Site",y = "Raw Reflectance (PCA)", x="Proportion High Marsh") + 
   theme_classic(base_size = 12)
-# High marsh used for nesting also has a higher level of NDVI (vegetation vigor) than the rest of the high marsh area
-p2<-ggplot(pres_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+
-  geom_point(aes(color=as.factor(y)))+
-  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
-  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-  labs(color = "Nest Site", linetype= "Nest Site",y = "NDVI", x="Proportion High Marsh") + 
-  theme_classic(base_size = 12)
-
-
-p1/p2
-ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions_placement_bp.png"), width = 7, height = 10, dpi = "retina")
 
 # successful nests are in high marsh with higher levels of NDVI
-ggplot(surv_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+
-  geom_point(aes(color=as.factor(y)))+
-  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
-  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-  labs(color = "Nest Success", linetype= "Nest Success",y = "NDVI", x="Proportion High Marsh") + 
-  theme_classic(base_size=12)
-ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions_success.png"), width = 7, height = 6, dpi = "retina")
+#p2<-ggplot(surv_dat,aes(x=HIMARSH,y=pca,group=as.factor(y)))+
+#  geom_point(aes(color=as.factor(y)))+
+#  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
+#  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
+#  labs(color = "Nest Success", linetype= "Nest Success",y = "NDVI", x="Proportion High Marsh") + 
+#  theme_classic(base_size=12)
+
+#p1+p2
+p1
+ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions_",ab_type,".png"), width = 5, height = 5, dpi = "retina")
 
 
 
