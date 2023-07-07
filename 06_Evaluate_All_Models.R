@@ -38,6 +38,8 @@ d.surv[[i]]<-cbind(d.surv.brt[[i]],d.surv.mxt[[i]][,3],d.surv.glm[[i]][,3])%>%
 #objects to hold model performance of each fold
 thr.pres<-list()
 thr.surv<-list()
+thr.p<-c()
+thr.s<-c()
 
 accu.pres<-list()
 accu.surv<-list()
@@ -45,19 +47,23 @@ accu.surv<-list()
 # calculate metrics for each fold
 for(i in 1:k){
 # get optimal threshold for Maximizing Kappa
-thr.p<-optimal.thresholds(d.pres[[i]],opt.methods = "MaxKappa")
-thr.pres[[i]]<-c(thr.p[1,]$BRTs,thr.p[1,]$Maxent,thr.p[1,]$GLM)
+thr.p<-optimal.thresholds(d.pres[[i]],opt.methods = c("MaxKappa","MaxSens+Spec"))
+thr.pres[[i]]<-c(thr.p$BRTs,thr.p$Maxent,thr.p$GLM)
 
-thr.s<-optimal.thresholds(d.surv[[i]],opt.methods = "MaxKappa")
-thr.surv[[i]]<-c(thr.s[1,]$BRTs,thr.s[1,]$Maxent,thr.s[1,]$GLM)
+thr.s<-optimal.thresholds(d.surv[[i]],opt.methods = c("MaxKappa","MaxSens+Spec"))
+thr.surv[[i]]<-c(thr.s$BRTs,thr.s$Maxent,thr.s$GLM)
 
 
 # accuracy metric tables
-accu.p<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]])
+accu.p<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]][c(2,4,6)])
+accu.p$Kappa<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]][c(1,3,5)])$Kappa
+accu.p$Kappa.sd<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]][c(1,3,5)])$Kappa.sd
 accu.p[, -c(1, 2)] <- signif(accu.p[, -c(1, 2)], digits = 3)
 accu.pres[[i]]<-accu.p
 
-accu.s<-presence.absence.accuracy(d.surv[[i]],threshold=thr.surv[[i]])
+accu.s<-presence.absence.accuracy(d.surv[[i]],threshold=thr.surv[[i]][c(2,4,6)])
+accu.s$Kappa<-presence.absence.accuracy(d.surv[[i]],threshold = thr.surv[[i]][c(1,3,5)])$Kappa
+accu.s$Kappa.sd<-presence.absence.accuracy(d.surv[[i]],threshold = thr.surv[[i]][c(1,3,5)])$Kappa.sd
 accu.s[, -c(1, 2)] <- signif(accu.s[, -c(1, 2)], digits = 3)
 accu.surv[[i]]<-accu.s
 }
