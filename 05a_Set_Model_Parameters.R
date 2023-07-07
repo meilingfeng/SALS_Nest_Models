@@ -19,8 +19,8 @@ path_out<-"D:/Nest_Models/Outputs/"
 reso<-30
 
 # use random background points or veg plots as absences?
-ab_type<-"v"
-#ab_type<-"b" 
+#ab_type<-"v"
+ab_type<-"b" 
 
 # veg class codes
 veg_codes<-data.frame(veg_code=c(1:2,4:9),
@@ -252,6 +252,7 @@ length(unique(pres_dat$site))
 
 #number of partitions to make. eg, 5 splits into 5 groups each of which will be used once as a test dataset (20% testing 80% training)
 k<-5
+set.seed(123)
 pres_dat$group<-kfold(pres_dat,k)
 surv_dat$group<-kfold(surv_dat,k)
 
