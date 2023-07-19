@@ -44,7 +44,7 @@ nrow(veg[veg$dataset=="Vegetation",])
 
 
 #how many SALS nests? in CT?
-nests_og<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+nests_og<-read.csv(paste0(dat_path,"Demographic Database/Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
   #Remove records missing site and year info (these were added as filler data to merge with veg data)
@@ -218,7 +218,7 @@ veg_pts<-st_read(paste0(path_out,"Final_outputs/Veg_locations/veg_locations_12_2
   dplyr::select(veg_id,Site,date,crd_typ)
 
 # load UVVR marsh raster layer
-marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
+marsh<-rast(paste0(dat_path,"Environmental Predictors/UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
 # set extent to cover all veg and nest points (take the smaller range of min vals and larger max vals)
 xmin<-ifelse(ext(veg_pts)$xmin<ext(nest_pts)$xmin,ext(veg_pts)$xmin,ext(nest_pts)$xmin)
 ymin<-ifelse(ext(veg_pts)$ymin<ext(nest_pts)$ymin,ext(veg_pts)$ymin,ext(nest_pts)$ymin)

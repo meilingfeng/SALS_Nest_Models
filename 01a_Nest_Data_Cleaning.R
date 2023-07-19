@@ -29,7 +29,7 @@ path_out<-"D:/Nest_Models/Outputs/"
 # -------------------------------------------
 
 ## Nest fates information - select nest ID and nest fate
-fates<-read.csv(paste0(dat_path,"NestFates_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+fates<-read.csv(paste0(dat_path,"Demographic Database/NestFates_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","fate"="UltimateNestFate")%>%
   
   # add flags for each type of coordinate edit we are applying to the original data
@@ -47,7 +47,7 @@ fates<-read.csv(paste0(dat_path,"NestFates_2001-2020.csv"),na.strings=c("","NOT 
 
 
 ## Nest location information - select nest ID, Site code, Year, Species, Coordinate information
-nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+nests<-read.csv(paste0(dat_path,"Demographic Database/Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
   #Remove records missing site and year info (these were added as filler data to merge with veg data)
@@ -61,11 +61,11 @@ nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC"
 ## 2. Load Site information - compile Site code, site name, and state
 #-----------------------------------------------------------------------------------
 ## some site information from SHARP banding SOP
-sites_sop<-read.csv(paste0(dat_path,"Sites.csv"),na.strings=c("","NOT REC","NA"))%>%
+sites_sop<-read.csv(paste0(dat_path,"Demographic Database/Sites.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("site.code"="Site_Code","Site", "State")
 
 ## more sites from Kate
-sites_kate<-read.csv(paste0(dat_path,"Nest_Site_Metadata_kate.csv"),na.strings=c("","NOT REC","NA"))%>%
+sites_kate<-read.csv(paste0(dat_path,"Demographic Database/Nest_Site_Metadata_kate.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("site.code"="SiteID", "State","Region")
 
 ## additional sites' information from Sam A's code
@@ -223,9 +223,9 @@ dat1<-rbind(dat3,dat1[!(dat1$id%in%dat3$id),])
 
 #2014 NJ records are still shifted Northeast after DDs conversion, slight systematic error remaining
 #look at Sam R's original data files for NJ sites
-NJ14<-read.csv(paste0(dat_path,"SESP 2011-2015.csv"))%>%
+NJ14<-read.csv(paste0(dat_path,"Demographic Database/SESP 2011-2015.csv"))%>%
   dplyr::select(id=ID,Lat2=LAT,Long2=LONG,Year=YEAR)
-NJ14<-read.csv(paste0(dat_path,"SALS 2011-2015.csv"))%>%
+NJ14<-read.csv(paste0(dat_path,"Demographic Database/SALS 2011-2015.csv"))%>%
   dplyr::select(id=ident,Lat2=Latitude,Long2=Longitude,Year)%>%
   rbind(NJ14)%>%
   mutate(yr=substr(Year,3,4),
@@ -422,7 +422,7 @@ data(us_states)
 ne<-filter(us_states,REGION=="Norteast")
 
 #Marsh boundaries, for spatial reference
-marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))#uvvr overall mean dataset that I transformed coordinate systems in Arc
+marsh<-rast(paste0(dat_path,"Environmental Predictors/UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))#uvvr overall mean dataset that I transformed coordinate systems in Arc
 
 #plot nest sites
 tm_shape(ne) + tm_borders() +

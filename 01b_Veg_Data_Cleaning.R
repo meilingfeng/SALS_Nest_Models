@@ -33,7 +33,7 @@ fates<- read.csv(paste0(path_out,"Intermediate_Outputs/new_nest_coords_12_9_22.c
 
 
 # Original Nest location data
-nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+nests<-read.csv(paste0(dat_path,"Demographic Database/Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
   #Remove records missing site and year info (these were added as filler data to merge with veg data)
@@ -41,7 +41,7 @@ nests<-read.csv(paste0(dat_path,"Nests_2001-2020.csv"),na.strings=c("","NOT REC"
 
 
 # vegetation plots
-veg<-read.csv(paste0(dat_path,"Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+veg<-read.csv(paste0(dat_path,"Demographic Database/Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("veg.id"="VegPointID","type"="PointType","site.code"="Site","date"="SurveyDate",
                 "coord.system"="Coordinate.System","utm.zone"="UTM.Zone","Easting","Northing","Lat","Long")%>%
   mutate(type=case_when(
@@ -157,7 +157,7 @@ data(us_states)
 ne<-filter(us_states,REGION=="Norteast")
 
 #Marsh boundaries
-marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
+marsh<-rast(paste0(dat_path,"Environmental Predictors/UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
 
 #plot nest sites
 tm_shape(ne) + tm_borders() +
@@ -516,7 +516,7 @@ data(us_states)
 ne<-filter(us_states,REGION=="Norteast")
 
 #Marsh boundaries
-marsh<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
+marsh<-rast(paste0(dat_path,"Environmental Predictors/UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))
 
 #plot nest sites
 tm_shape(ne) + tm_borders() +
@@ -594,7 +594,7 @@ plots_final<-dplyr::select(plots,veg.id,date)%>%
 #------------------------------------------------------------
 
 # read in original veg data variables
-veg_orig<-read.csv(paste0(dat_path,"Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+veg_orig<-read.csv(paste0(dat_path,"Demographic Database/Veg_2011-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select(-c("PointType","Site","UTM.Zone","Easting","Northing","Lat","Long","Coordinate.System"))
 #join to new coordinate info
 output_csv<-dplyr::select(veg_final,VegPointID=veg.id,coord.typo,SurveyDate=date,PointType=type, Site_Name=Site, Site=site.code,UTM.Zone=utm.zone,

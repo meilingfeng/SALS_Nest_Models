@@ -33,17 +33,17 @@ coarse_buff<-function(x){terra::focal(rast(x), w=9, fun=mean,na.policy="only", n
 if(!file.exists(paste0(path_out,"Intermediate_outputs/UVVR/uvvr_mean_noOutlier.tif"))){ # check if the file already exists to prevent overwriting it
   
   # A. UVVR mean across 2014-2018
-  uvvr<-rast(paste0(dat_path,"UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))%>%
+  uvvr<-rast(paste0(dat_path,"Environmental Predictors/UVVR/UVVR_annual_mean/uvvr_mean_utm18_2.tif"))%>%
     dplyr::rename_with(function(x){x<-'uvvr_mean'},.cols = everything()) 
   # values above 2 are not accurate, set to NA
   uvvr[uvvr>2]<-NA
   
   # B. UVVR change (2014-2018)
-  uvvr14<-rast(paste0(dat_path,"UVVR/uvvr_14_utm18_mean_ext.tif"))%>%
+  uvvr14<-rast(paste0(dat_path,"Environmental Predictors/UVVR/uvvr_14_utm18_mean_ext.tif"))%>%
     dplyr::rename_with(function(x){x<-'uvvr_14'},.cols = everything())
   # values above 2 are not accurate, set to NA
   uvvr14[uvvr14>2]<-NA
-  uvvr18<-rast(paste0(dat_path,"UVVR/uvvr_18_utm18_mean_ext.tif"))%>%
+  uvvr18<-rast(paste0(dat_path,"Environmental Predictors/UVVR/uvvr_18_utm18_mean_ext.tif"))%>%
     dplyr::rename_with(function(x){x<-'uvvr_18'},.cols = everything())
   uvvr18[uvvr18>2]<-NA
   # subtract 2018 from 2014 to get change
@@ -81,7 +81,7 @@ writeRaster(uvvr_mean,paste0(path_out,"Intermediate_outputs/UVVR/uvvr_mean_noOut
 if(!file.exists(paste0(path_out,"Intermediate_outputs/Precip/precip_buff.tif"))){
   
   # create buffer
-  precip<-coarse_buff(paste0(dat_path,"Precip/PRISM_ppt_30yr_normal_800mM4_annual_bil.bil"))
+  precip<-coarse_buff(paste0(dat_path,"Environmental Predictors/Precip/PRISM_ppt_30yr_normal_800mM4_annual_bil.bil"))
   # write file
   writeRaster(precip,paste0(path_out,"Intermediate_outputs/Precip/precip_buff.tif"),overwrite=T)
 }
@@ -95,7 +95,7 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/Precip/precip_buff.tif")))
 if(!file.exists(paste0(path_out,"Intermediate_outputs/Tidal_restriction/tideres_buff.tif"))){
   
   # create buffer
-  tideres<-coarse_buff(paste0(dat_path,"DSL_tidal_restrictions/tideres_2020_v5.0.tif"))
+  tideres<-coarse_buff(paste0(dat_path,"Environmental Predictors/DSL_tidal_restrictions/tideres_2020_v5.0.tif"))
   # write file
   writeRaster(tideres,paste0(path_out,"Intermediate_outputs/Tidal_restriction/tideres_buff.tif"),overwrite=T)
 }
@@ -122,7 +122,7 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/Texture/ent_txt_1.tif"))){
       # use equal range method when comparing across several datasets (can set gloabl min and max range using max_val and min_val) - splits data into equal ranges
       # alternative option is "equal prob" which splits by quantiles, used in original paper (Haralick and Shanmugam 1973)
       # NDVI of live plants ranges 0:1, set range and breaks at 0.1 intervals
-  ndvi<-map(unlist(map(paste0(dat_path,"Correll_NAIP"),~list.files(.,pattern = "NDVI.tif$",full.names=T))),rast)
+  ndvi<-map(unlist(map(paste0(dat_path,"Environmental Predictors/Correll_NAIP"),~list.files(.,pattern = "NDVI.tif$",full.names=T))),rast)
   txt_entro<-txt_corr<-list()
   
   for (i in 1:length(ndvi)){
@@ -180,7 +180,7 @@ for(i in 1:length(ent_list)){
   # first buffer the original layer
 if(!file.exists(paste0(path_out,"Intermediate_outputs/NDVI/1_NDVI_buff.tif"))){
   # list files
-  ndvi_list<-unlist(map(paste0(dat_path,"Correll_NAIP"),~list.files(.,pattern = "NDVI.tif$",full.names=T)))
+  ndvi_list<-unlist(map(paste0(dat_path,"Environmental Predictors/Correll_NAIP"),~list.files(.,pattern = "NDVI.tif$",full.names=T)))
   # apply buffer
   ndvi_list<-map(ndvi_list,fine_buff)
   #write buffer files
@@ -211,7 +211,7 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/NDVI/Z1_zeroed_NDVI_buff.t
   # First extract PC1 to its own raster layer
 if(!file.exists(paste0(path_out,"Intermediate_outputs/PCA/Z1_PC1.tif"))){
   # list files
-  pca_list<-unlist(map(paste0(dat_path,"Correll_NAIP"),~list.files(.,pattern = "PCA.tif$",full.names=T)))
+  pca_list<-unlist(map(paste0(dat_path,"Environmental Predictors/Correll_NAIP"),~list.files(.,pattern = "PCA.tif$",full.names=T)))
   #extract just the first band for the pca data
   mapply(function(x,y){writeRaster(rast(x,lyrs=1),paste0(path_out,"Intermediate_outputs/PCA/Z",y,"_PC1.tif"),overwrite=T)},
          pca_list,c(1:length(pca_list)))
