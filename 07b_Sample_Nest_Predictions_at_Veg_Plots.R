@@ -4,7 +4,7 @@ library(sf)
 
 
 ########
-#sample nest precitions at random veg sites
+#sample nest precitions at demo veg sites
 #############
 
 zones<-c(2:6)
