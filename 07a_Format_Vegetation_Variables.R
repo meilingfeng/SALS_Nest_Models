@@ -9,12 +9,15 @@ library(sf)
 
 
 ### Set up
-# -------------------------------------------
+########################################
+
 ## 1. file paths
+#------------------------------------
 dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
 ## 2. Read in vegetation data
+#------------------------------------
 # There is veg data from 3 different surveys:
 # a) transect survey points (only for conservation/restoration sites, measured in a transect line from upland to coast, centered on rapid veg points)
 transect_dat<-read.csv(paste0(dat_path,"Survey Database/Point_Intercept_Vegetation_TRUEFALSE_20221209.csv"), stringsAsFactors = T)%>%
@@ -33,6 +36,7 @@ demo_dat<-read.csv(paste0(dat_path,"Demographic Database/Veg_2011-2020.csv"))%>%
                 ~as.numeric(.x)))
 
 ## 3. Add the location data for the transect and rapid veg points
+#--------------------------------------------------------------------
 transect_dat<-read.csv(paste0(dat_path,"Survey Database/All_points_attribute_table_20230426.csv"), stringsAsFactors = T)%>%
   rename(id=region_ID)%>%
   dplyr::select("id","Long"="POINT_X","Lat"="POINT_Y")%>%
@@ -44,7 +48,8 @@ rapid_dat<-read.csv(paste0(dat_path,"Survey Database/All_points_attribute_table_
 
 
 
-## 3. define function to calculate mode
+## 4. define function to calculate mode
+#-----------------------------------------------------
 find_mode <- function(x) {
   u <- unique(na.omit(x))
   tab <- tabulate(match(x, u))
@@ -56,15 +61,17 @@ find_mode <- function(x) {
 
 
 ### Format variables for each dataset
-#-----------------------------------------------
-## a) Demographic Vegetation Data
+#####################################################
 
-# Surrounding Vegetation data
+## 1. Demographic Vegetation Data
+#--------------------------------
+
+## Surrounding Vegetation data
 demo_veg<-demo_dat%>%
-  mutate(#add note of what dataset this is (good to specify this if we combine across datasets due to different survey methods)
+  mutate(#add note of which dataset this is
          data="demo_veg")%>%
-  ## 1. Format original variables
-  # Make all the groups in the categorical variables (species lists) consistent (lump rare species into "Other" category)
+  # Format original variables
+  # Make all the groups in the categorical variables (species lists) consistent 
   mutate(across(c(TallestMP1Sp, TallestMP2Sp, TallestMP3Sp, TallestMP4Sp, TallestCentSp),
                 ~case_when(grepl("stichlis",.x)~"distichlis",
                            grepl("atens",.x)~"patens",
@@ -74,10 +81,11 @@ demo_veg<-demo_dat%>%
                            grepl("Iva",.x)~"shrub",
                            grepl("Open water|Bare Ground|Wrack",.x)~"unvegetated",
                            grepl("Not rec|NOT REC",.x)~NA,
+                           #group rare species into "Other" category
                            !grepl("stichlis|atens|lterniflora|ragmites|Not rec|NOT REC|gerardii|Open water|Bare Ground|Wrack|Iva",.x)~"Other")))%>%
-  ## 2. Calculate Final Variables
-  #take average of transect data (percent coverage along 4 transects) from 2011, then calculate dominant species
+  #Calculate Final Variables
   rowwise()%>%
+  #take average of transect data (percent coverage along 4 transects) from 2011, then use calculate dominant species below
   mutate(rackT=mean(c(RackT1,RackT2,RackT3,RackT4),na.rm=T),
          bareT=mean(c(BareGroundT1,BareGroundT2,BareGroundT3,BareGroundT4),na.rm=T),
          waterT=mean(c(WaterT1,WaterT2,WaterT3,WaterT4),na.rm=T),
@@ -163,17 +171,15 @@ demo_veg<-dplyr::select(demo_veg,-rackT,-bareT,-waterT,-patensT,-altT,-dstchT,-j
 
 
 
-# Nest Characteristics data
-#--------------------------------------------------------
-# Do nest construction decisions influence nest survival? Do more parental decisions than just choosing a good location contribute to nest success?
-# Run an analysis with just nest points, looking at nest construction variables
-
+## Nest Characteristics data
 demo_nest<-demo_dat%>%
+  # mark what data it is
   mutate(data="demo_nest")%>%
+  # use only nest points, not random veg points
   filter(PointType=="Nest")%>%
-  # 1. Select Important Variables
+  # Select Important Variables
   dplyr::select(id, Site, Lat, 
-                #Categorical Covariates for Nests
+                #Categorical variables for Nests
                 NestLoc, # nest is under thatch (dead vegetation), live vegetation, both, or none (exposed)
                 WovenNestCanopy, # Does the nest have a woven canopy over it? (None, Partial, Complete)
                 WovenNestCanopyLiveDead, # If it has a canopy, it is made with live or thatch/dead material or both?
@@ -181,16 +187,14 @@ demo_nest<-demo_dat%>%
                 VertStructureLiveDead, # Is the vertical structure (stems) the nest is attached to live or dead material or both?
                 VertStructureVegTypes, # plant species in vertical structure
                 NumVertStructureAttachments, # the the vertical structure made of single stems or multiple stems?
-                #Continuous Covariates for Nests
+                #Continuous variables for Nests
                 EntOrientation,# degree bearing of the nest entrance
                 DistLipToCent, #Distance from lip to nest center
                 DistLipToGround, #Distance from lip of nest to ground
                 DistBottomToGround, # Distance from bottom of nest to ground (maybe subtract these to get nest depth?)
                 PercentVisible # Percent canopy cover over the nest
   )%>%
-  #filter(complete.cases(.))%>%
-  
-  # 2. Aggregate the categories for categorical variables
+  # Aggregate the categories for categorical variables
   mutate(VrtStLD=as.factor(case_when(VertStructureLiveDead%in%c("both", "Both","BOTH")~ "both", 
                                      VertStructureLiveDead%in%c("LIVE","Live")~"live",
                                      VertStructureLiveDead=="Thatch/Dead"~"dead",
@@ -212,16 +216,17 @@ demo_nest<-demo_dat%>%
                                      WovenNestCanopyLiveDead=="Live"~ "live",
                                      is.na(WovenNestCanopyLiveDead)|WovenNestCanopyLiveDead=="NOT REC"~NA)),
          
-    # 3. convert woven canopy vegetation to variables indicating the presence of each species within the canopy
-         # lysimachia, pectinata, triglochin, limonium only have 1-5 records, so lump into an "other" category for rare species
-         canopy_alt=ifelse(grepl("alterniflora|ALTERNIFLORA|alternifora",WovenNestCanopyVegTypes),1,0),
+    #convert woven canopy vegetation to binary variables indicating the presence of each species within the canopy
+        canopy_alt=ifelse(grepl("alterniflora|ALTERNIFLORA|alternifora",WovenNestCanopyVegTypes),1,0),
          canopy_patens=ifelse(grepl("patens|PATENS",WovenNestCanopyVegTypes),1,0),
          canopy_juncus=ifelse(grepl("Juncus|JUNCUS",WovenNestCanopyVegTypes),1,0),
          canopy_distichlis=ifelse(grepl("Distichlis",WovenNestCanopyVegTypes),1,0),
          canopy_phrag=ifelse(grepl("Phragmites",WovenNestCanopyVegTypes),1,0),
          canopy_wrack=ifelse(grepl("Wrack",WovenNestCanopyVegTypes),1,0),
          canopy_shrub=ifelse(grepl("Iva|Baccharis",WovenNestCanopyVegTypes),1,0),
+         #lysimachia, pectinata, triglochin, limonium only have 1-5 records, so lump into an "other" category for rare species
          canopy_other=ifelse(grepl("Salicornia|Triglochin|Limonium|Carex|Schoenoplectus|Solidago|pectinata|Eleocharis|baltica|Plantago|Potentilla|Lysimachia",WovenNestCanopyVegTypes),1,0),
+    #convert vertical structure vegetation to binary variables indicating the presence of each species within the vertical structure     
          vert_alt=ifelse(grepl("alterniflora|ALTERNIFLORA|alternifora",VertStructureVegTypes),1,0),
          vert_patens=ifelse(grepl("patens|PATENS",VertStructureVegTypes),1,0),
          vert_juncus=ifelse(grepl("Juncus|JUNCUS",VertStructureVegTypes),1,0),
@@ -234,28 +239,34 @@ demo_nest<-demo_dat%>%
   dplyr::select(-WovenNestCanopy,-WovenNestCanopyLiveDead,-WovenNestCanopyVegTypes,-VertStructureVegTypes,-VertStructureLiveDead,-NumVertStructureAttachments)
 
 
-#Rapid veg
+
+
+
+## 2. Rapid vegetation data (Survey database)
+#--------------------------------------------------
 rapid_dat2<-rapid_dat%>%
   #remove duplicate records
   distinct(.keep_all = TRUE)%>%
-  #remove records that are nearly duplicated with less than an hour time difference of the survey start time
+  #remove surveys that were run sequentially and take the later time stamp
   filter((id!="234976_EXC08")&
            (id!="234976_p23"&LowMarshCC!="NULL")&
            (id!="2238900_DCP001"&Time!="11:04:00")&
            (id!="238900_DCP007")&Time!="08:45:00")%>%
-  # 1. Select Important Variables
+  # Select Important Variables:
   dplyr::select(id, Lat, year,Date,SHARPTide,
                 #Categorical variables:
-                #Percent cover within 50 m categories for low and high marsh, saltmarsh border, brackish terrestrial border, invasive species, etc
+                # a) Percent cover within 50 m categories for low and high marsh, saltmarsh border, brackish terrestrial border, invasive species, etc
                 LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, PannesChannelsCC,UplandCC,Wrack,OpenWater,
-                # number of dead snags (dead trees) >1m (DBH or height?) within 50m radius
-                DeadSnags,
                 #Continuous variables:
+                # b) number of dead snags (dead trees) >1m (DBH or height?) within 50m radius
+                DeadSnags,
                 #Percent cover of individual species
+                  # species names
                 DomSp1,DomSp2,DomSp3,DomSp4,DomSp5,DomSp6,DomSp7,DomSp8,DomSp9,DomSp10,
+                  # species percent cover
                 Sp1Percent,Sp2Percent,Sp3Percent,Sp4Percent,Sp5Percent,Sp6Percent,Sp7Percent,Sp8Percent,Sp9Percent,Sp10Percent)%>%
-  # 2. Create variables: 
-  #reclassify categorical percent cover variables into 25% intervals
+  # Create variables: 
+  # reclassify categorical percent cover variables into 25% intervals
   mutate(across(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, PannesChannelsCC,UplandCC,Wrack,OpenWater),
                 ~case_when(  # 0 is not present
                            .x=="0"~as.factor("0"),
@@ -269,9 +280,9 @@ rapid_dat2<-rapid_dat%>%
                            .x=="4"~as.factor("26-50"),
                            .x=="5"~as.factor("51-75"),
                            .x=="6"~as.factor("76-100"),
-                           .x=="NULL"|is.na(.x)~NA)))
-#factor(LowMarshCC, levels=c('0', '<1', '1-25', '26-50','51-75','76-100'))
-rapid_dat3<-rapid_dat2%>%
+                           .x=="NULL"|is.na(.x)~NA)))%>%
+                            #factor(LowMarshCC, levels=c('0', '<1', '1-25', '26-50','51-75','76-100'))
+  # Aggregate categories for species names
   mutate(across(c(DomSp1,DomSp2,DomSp3,DomSp4,DomSp5,DomSp6,DomSp7,DomSp8,DomSp9,DomSp10),
                 ~case_when(grepl("stichlis",.x,)~"distichlis",
                            grepl("atens",.x)~"patens",
@@ -301,21 +312,27 @@ rapid_dat3<-rapid_dat2%>%
                            grepl("Wrack",.x)~"wrack",
                            grepl("Thatch",.x)~"thatch",
                            grepl("Lemna|Algae|S. distichum",.x)~NA)))
-
- rapid_dat4<- pivot_longer(rapid_dat3,cols=contains("Dom"),names_to = "transect", values_to = "species")%>%
+  # Name and percent of any species covering >5% of 50m buffer: DomSp1-10,Sp1-10Percent
+    # Restructure table to have species names as column names and percentages as the values
+    # first take the columns with species names and species percentages and make them into 1 column for names and 1 column for percents
+rapid_dat3<-  pivot_longer(rapid_dat2,cols=contains("Dom"),names_to = "transect", values_to = "species")%>%
    dplyr::select(-contains("Percent"))%>%
    mutate(transect=substr(transect, nchar(transect), nchar(transect)),
           transect=case_when(transect=="0"~paste0("1",transect),
                              transect!=0~transect))
- rapid_dat5<- pivot_longer(rapid_dat3,cols=contains("Percent"),names_to = "transect", values_to = "percent")%>%
+
+rapid_dat4<- pivot_longer(rapid_dat2,cols=contains("Percent"),names_to = "transect", values_to = "percent")%>%
    dplyr::select(id,transect,percent,year,Date,SHARPTide)%>%
    mutate(transect=substr(transect, 3, 4),
           transect=case_when(substr(transect,2,2)=="P"~substr(transect,1,1),
-                             substr(transect,2,2)!="P"~transect))%>%
-   right_join(rapid_dat4,by=c("id","transect","year","Date","SHARPTide"))
-#Sci name and percent of any species covering >5% of 50m buffer: DomSp1-10,Sp1-10Percent
-unique(rapid_dat$DomSp1)
+                             substr(transect,2,2)!="P"~transect))
 
-#Transect
+rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date","SHARPTide"))# need to remove duplicated surveys
+
+  
+  
+
+## 3. Transect vegetation data (Survey database)
+#---------------------------------------------------------
 #ScientificName, 1-10,Year, Point_ID
-#Remove rows with FALSE for 1-10, remove duplicate rows
+#Remove rows with FALSE for all columns (1-10), and remove duplicate rows
