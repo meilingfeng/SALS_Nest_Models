@@ -22,14 +22,20 @@ path_out<-"D:/Nest_Models/Outputs/"
 #------------------------------------
 # There is veg data from 3 different surveys:
 # a) transect survey points (only for conservation/restoration sites, measured in a transect line from upland to coast, centered on rapid veg points)
-transect_dat<-read.csv(paste0(dat_path,"Survey Database/Point_Intercept_Vegetation_TRUEFALSE_20221209.csv"), stringsAsFactors = T)%>%
+transect_dat<-read.csv(paste0(dat_path,"Survey Database/Point_Intercept_Vegetation_TRUEFALSE_20221209_updated.csv"))%>%
   # add consistent columns names to each dataset (id and year)
   rename(id=Point_ID)%>%
-  mutate(year=as.factor(Year))
+  mutate(Time=substr(PointInterceptDate,nchar(PointInterceptDate)-4,nchar(PointInterceptDate)),
+         Date=substr(PointInterceptDate,1,nchar(PointInterceptDate)-5),
+         year=year(mdy(Date)),
+         Month=month(mdy(Date)),
+         Day=day(mdy(Date)))%>%
+  filter(year!=2023) #this year's data has not been QA/QC yet
 # b) rapid vegetation data (measured within a 50m radius circle)
-rapid_dat<-read.csv(paste0(dat_path,"Survey Database/Rapid_Vegetation_20230303.csv"))%>%
+rapid_dat<-read.csv(paste0(dat_path,"Survey Database/Rapid_Vegetation_20230303_updated.csv"))%>%
   rename(id=BirdPtID)%>%
-  mutate(year=as.factor(year(mdy(Date))))
+  mutate(year=as.factor(year(mdy(Date))))%>%
+  filter(year!="2023")
 # c) demographic random vegetation data (measured within 1m square)
 demo_dat<-read.csv(paste0(dat_path,"Demographic Database/Veg_2011-2020.csv"))%>%
   rename(id=VegPointID)%>%
@@ -229,7 +235,7 @@ demo_nest<-demo_dat%>%
          canopy_phrag=ifelse(grepl("Phragmites",WovenNestCanopyVegTypes),1,0),
          canopy_wrack=ifelse(grepl("Wrack",WovenNestCanopyVegTypes),1,0),
          canopy_shrub=ifelse(grepl("Iva|Baccharis",WovenNestCanopyVegTypes),1,0),
-         #lysimachia, pectinata, triglochin, limonium only have 1-5 records, so lump into an "other" category for rare species
+         #lysimachia, pectinata, triglochin, limonium only have 1-5 records, so lump into an "other" category for rare species *maybe break up into more categories like the rapid/transect veg?
          canopy_other=ifelse(grepl("Salicornia|Triglochin|Limonium|Carex|Schoenoplectus|Solidago|pectinata|Eleocharis|baltica|Plantago|Potentilla|Lysimachia",WovenNestCanopyVegTypes),1,0),
     #convert vertical structure vegetation to binary variables indicating the presence of each species within the vertical structure     
          vert_alt=ifelse(grepl("alterniflora|ALTERNIFLORA|alternifora",VertStructureVegTypes),1,0),
@@ -253,11 +259,11 @@ rapid_dat2<-rapid_dat%>%
   ## indicate dataset is rapid_veg
   mutate(data="rapid_veg")%>%
   ## remove rows that have no data (all NAs)
-  filter(!(if_all(-c(id,year,SHARPTide,Date,Lat,data), ~is.na(.x))))%>%
+  filter(!(if_all(contains(c("Dom","Sp","Dead","Water","Wrack")), ~is.na(.x))))%>%
   ## remove duplicate records
-  distinct(pick(c("id","year","Date","SHARPTide")),.keep_all = TRUE)%>%
+  distinct(pick(c("id","year","Date","Time")),.keep_all = TRUE)%>%
   ## Select Important Variables:
-  dplyr::select(id, Lat, year,Date,SHARPTide,data,
+  dplyr::select(id, Lat, year,Date,SHARPTide,Time,data,
                 #Categorical variables:
                 # a) Percent cover within 50 m categories for low and high marsh, saltmarsh border, brackish terrestrial border, invasive species, etc
                 LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, PannesChannelsCC,UplandCC,WrackCC=Wrack,OpenWaterCC=OpenWater,
@@ -331,17 +337,17 @@ rapid_dat3<-  pivot_longer(rapid_dat2,cols=contains("Dom"),names_to = "transect"
                              transect!=0~transect))
 
 rapid_dat4<- pivot_longer(rapid_dat2,cols=contains("Percent"),names_to = "transect", values_to = "percent")%>%
-   dplyr::select(id,transect,percent,year,Date,SHARPTide,data)%>%
+   dplyr::select(id,transect,percent,year,Date,SHARPTide,Time,data)%>%
    mutate(transect=substr(transect, 3, 4),
           transect=case_when(substr(transect,2,2)=="P"~substr(transect,1,1),
                              substr(transect,2,2)!="P"~transect),
           percent=ifelse(percent=="NULL",NA,as.numeric(as.character(percent))))
 
     # join the species column and percentage columns into one table
-rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date","SHARPTide","data"))%>%
+rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date","SHARPTide","data","Time"))%>%
   dplyr::select(-transect)%>%
     # we grouped species into bigger categories, so now we need to sum together the individual percentages within each category
-  group_by(id,year,Date,SHARPTide,Lat, data,
+  group_by(id,year,Date,SHARPTide,Lat, data, Time,
            LowMarshCC,SaltMarshTBorderCC,HighMarshCC,BrackishTBorderCC,InvasivesCC,
            PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC,DeadSnags,species)%>%
    summarise(percent=sum(percent,na.rm=T))%>%
@@ -349,7 +355,7 @@ rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date",
     # Then pivot wider so each species category is a variable (column) with percent cover in the plot as the values
   pivot_wider(names_from = species,values_from = percent)%>%
     # remove the NA species column (make sure its column 16)
-  dplyr::select(-17)
+  dplyr::select(-18)
     # fill in NA's with 0's if data was recorded for either the species section or cover class section
 is.zero <- function(x) {
   x == 0
@@ -359,14 +365,14 @@ rapid_dat6<-rapid_dat5%>%
   mutate(across(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
                   PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),
                            ~ifelse(is.na(.x),0,.x)),
-         across(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_terrestrial_sp_pct,other_aquatic_sp_pct,
+         across(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_marsh_sp_pct,other_aquatic_sp_pct,
                   invasive_pct,sedges_pct,grasses_pct,modified_habitat_pct,shrubs_pct,trees_pct,rushes_pct,upland_pct,
                   phrag_pct,pannes_channels_pct,open_water_pct,bare_pct),
                 ~ifelse(is.na(.x),0,.x)),
       # mark if all data is missing for the cover class or species sections, this part of the survey was probably not conducted
          CC_available=ifelse(if_all(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
                                  PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),is.zero),0,1),
-         sp_pct_available=ifelse(if_all(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_terrestrial_sp_pct,other_aquatic_sp_pct,
+         sp_pct_available=ifelse(if_all(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_marsh_sp_pct,other_aquatic_sp_pct,
                                           invasive_pct,sedges_pct,grasses_pct,modified_habitat_pct,shrubs_pct,trees_pct,rushes_pct,upland_pct,
                                           phrag_pct,pannes_channels_pct,open_water_pct,bare_pct),is.zero),0,1)
                 )%>%
@@ -375,7 +381,7 @@ rapid_dat6<-rapid_dat5%>%
 ## Add dominant species and species presence variables:
   # if species has more than 0%, mark as present with a 1, otherwise 0
 rapid_dat7<-rapid_dat6%>%
-  mutate(across(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_terrestrial_sp_pct,other_aquatic_sp_pct,
+  mutate(across(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_marsh_sp_pct,other_aquatic_sp_pct,
                   invasive_pct,sedges_pct,grasses_pct,modified_habitat_pct,shrubs_pct,trees_pct,rushes_pct,upland_pct,
                   phrag_pct,pannes_channels_pct,open_water_pct,bare_pct),
                 ~ifelse(.x>0,1,0)),
@@ -413,38 +419,46 @@ rapid_dat7<-rapid_dat7%>%
          dom_species=ifelse(sp_pct_available==0,NA,dom_species))
 
   # adjust the columns markers to presence absence instead of percent
-names(rapid_dat7)[c(17:37)] <- gsub("_pct","_pres",names(rapid_dat7[,c(17:37)]))
-names(rapid_dat7)[c(7:15)] <- gsub("CC","_pres",names(rapid_dat7[,c(7:15)]))
+names(rapid_dat7)[c(18:38)] <- gsub("_pct","_pres",names(rapid_dat7[,c(18:38)]))
+names(rapid_dat7)[c(8:16)] <- gsub("CC","_pres",names(rapid_dat7[,c(8:16)]))
   # and join the percent and presence variables into one table
-rapid_dat8<-left_join(rapid_dat6,rapid_dat7,by=c("id","year","Date","SHARPTide","Lat","DeadSnags","data","CC_available","sp_pct_available"))
+rapid_dat8<-left_join(rapid_dat6,rapid_dat7,by=c("id","year","Date","SHARPTide","Lat","DeadSnags","data","Time","CC_available","sp_pct_available"))
 
 
 
 ## Summarize data availability and filter for data completeness:
   # number of missing tide records
 table(rapid_dat8$SHARPTide)
-  # proportion of missing tide records
-table(rapid_dat6$SHARPTide)/nrow(rapid_dat6)
+  # number missing time records
+table(rapid_dat6$Time)
 
   # number of records with both cover class and species data (Complete data)
 table(rapid_dat6$CC_available,rapid_dat6$sp_pct_available)
+
+  #look for surveys that may have collected data over multiple days (records with same site and year, missing 1 section of data)
+part_missing<-rapid_dat8%>%
+  filter(sp_pct_available==0|CC_available==0)
+split_survey<-part_missing%>%
+  filter(duplicated(id,year))
+
   # majority of records have complete data, remove those missing data
 rapid_dat9<-rapid_dat8%>%
-  filter(!(sp_pct_available==0|CC_available==0|SHARPTide=="."))
+  filter(!(sp_pct_available==0|CC_available==0|Time=="0:00:00"))
   # How many observations were removed during filtering?
 nrow(rapid_dat8)-nrow(rapid_dat9) # filtering for complete data removed 893 records,
 nrow(rapid_dat)-nrow(rapid_dat9) # in total removed 1,430 records during cleaning (including duplicate records)
 
   # Look at duplicate data
-n<-rapid_dat%>%
+nup<-rapid_datup%>%
   group_by(id,Date)%>%
   summarise(count=n())%>%
   filter(count>1)
   # how many and which are duplicated?
-dups<-n%>%left_join(rapid_dat,by=c("id","Date"))%>%
+dupsup<-nup%>%left_join(rapid_datup,by=c("id","Date"))%>%
   group_by_all() %>%
   mutate(duplicated = n() > 1)%>%
   filter(duplicated==F)
+t<-anti_join(dups,dupsup,by=c("id","Date"))
 write.csv(dups,paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/rapid_veg_duplicates.csv"),row.names = F)
   # which observers have duplicate surveys?
 dups2<-dups%>%group_by(ObserverInitials)%>%
