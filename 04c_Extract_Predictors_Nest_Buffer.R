@@ -7,7 +7,7 @@ library(terra)#updated version of raster package
 library(exactextractr)
 
 #####################################################################################################################################
-## Summarize environmental data in each buffer zone (15m around each nest = 30m to match coarsest resolution of environmental data)
+## Summarize environmental data in each buffer zone - 30m since this is our prediction resolution
 ######################################################################################################################################
 
 
@@ -23,7 +23,7 @@ if(!exists("nests_buff")){
   source("04a_Format_Load_Data_Nests_and_Predictors.R")
 }
 
-
+#list for the 8 region outputs
 out_list<-list()
 
 ## Summarize predictors in buffers
@@ -50,7 +50,7 @@ for(i in 1:length(vg_cls)) {
     dplyr::select(-c("value","area","n"))%>%
     distinct(id,prop_area,veg_class,.keep_all=T)%>%
     pivot_wider(names_from= "veg_class",values_from = "prop_area")%>%
-      unnest() #removes list cols
+    unnest() #removes list cols
 }
 
 #empty region dataframes indicate no SALS nests in that region
@@ -81,7 +81,8 @@ uvvr_mean<-exact_extract(uvvr, st_transform(nests_buff,crs(uvvr)), #set coord sy
                          summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
 uvvr_mean<-group_by(uvvr_mean,id)%>%
-  mutate(weighted=n*value)%>%
+  mutate(n=n/sum(n,na.rm=T),
+         weighted=n*value)%>%
   summarise(uvvr_mean=round(sum(weighted,na.rm=T),digits=5))%>%
   ungroup()
 
@@ -93,7 +94,8 @@ uvvr_diff2<-exact_extract(uvvr_diff, st_transform(nests_buff,crs(uvvr_diff)), #s
                           summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
 uvvr_diff2<-group_by(uvvr_diff2,id)%>%
-  mutate(weighted=n*value)%>%
+  mutate(n=n/sum(n,na.rm=T),
+         weighted=n*value)%>%
   summarise(uvvr_diff=round(sum(weighted,na.rm=T),digits=5))%>%
   ungroup()
 
@@ -107,9 +109,10 @@ for(i in 1:length(ndvi)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
   out_list[[i]]<-exact_extract(ndvi[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
-    #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
+    #convert cell coverage to weighted average by multiplying count fraction by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
-    mutate(weighted=n*value)%>%
+    mutate(n=n/sum(n,na.rm=T),
+           weighted=n*value)%>%
     summarise(ndvi=round(sum(weighted,na.rm=T),digits=5))%>%
     ungroup()
 }
@@ -130,7 +133,8 @@ for(i in 1:length(pca)) {
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
-    mutate(weighted=n*value)%>%
+    mutate(n=n/sum(n,na.rm=T),
+           weighted=n*value)%>%
     summarise(pca=round(sum(weighted,na.rm=T),digits=5))%>%
     ungroup()
 }
@@ -152,7 +156,8 @@ for(i in 1:length(ndvi)) {
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
-    mutate(weighted=n*value)%>%
+    mutate(n=n/sum(n,na.rm=T),
+           weighted=n*value)%>%
     summarise(ent_txt=round(sum(weighted,na.rm=T),digits=5))%>%
     ungroup()
 }
@@ -173,7 +178,8 @@ for(i in 1:length(ndvi)) {
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
-    mutate(weighted=n*value)%>%
+    mutate(n=n/sum(n,na.rm=T),
+           weighted=n*value)%>%
     summarise(cor_txt=round(sum(weighted,na.rm=T),digits=5))%>%
     ungroup()
 }
