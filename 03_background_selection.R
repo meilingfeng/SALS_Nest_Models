@@ -58,7 +58,7 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
 # b) set area outside marsh and cells with nests to NA
   for(i in 1:length(masks)){
     mask<-masks[[i]]
-    mask[mask==0|mask==9|mask==7|mask==8]<-NA
+    mask[mask==0|mask==9|mask==7]<-NA #(Upland and open water because these are outside the boundaries of the other layers and used as bordering cover types) 
     mask[unique(raster::extract(mask, nests,cell=T)[,1])]<-NA
     masks[[i]]<-mask
     }
