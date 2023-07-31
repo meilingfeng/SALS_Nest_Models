@@ -30,31 +30,31 @@ veg_codes<-data.frame(veg_code=c(1:2,4:9),
 ## 3. Load observations with predictors
 # list of predictor surface files for each zone
 load(paste0(path_out,"predictor_files_all_zones_",reso,"m.rds"))
-all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","ent_txt","cor_txt", "tideres", "uvvr_diff") 
+all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","cor_txt", "tideres", "uvvr_diff") 
 
 # point predictors
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
   filter(bp%in%c("p",ab_type))%>%
   mutate(presence=ifelse(bp=="p",1,0))%>%
-  left_join(veg_codes,by="veg_class")
+  left_join(veg_codes,by="veg_class")%>%
+  dplyr::select(-pca,-ndvi,-cor_txt,-ent_txt)
 
 # buffered predictors
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
-  dplyr::select(id,HIMARSH,LOMARSH,POOL,PHRG,STRM,MUD,TERRBRD)%>% #remove UPLND
+  dplyr::select(id,HIMARSH,ndvi,pca,cor_txt)%>% #remove UPLND
   right_join(dat,by="id")%>%
   mutate(veg_code=as.factor(veg_code),
          #create binary variable for if nests intersect High Marsh habitat
          Highmarsh=as.factor(ifelse(veg_class=="HIMARSH",1,0)))
 
 # fill in 0's for land cover proportions with NAs 
-dat[,c("HIMARSH","LOMARSH","PHRG","STRM","MUD","TERRBRD")]<-dat[,c("HIMARSH","LOMARSH","PHRG","STRM","MUD","TERRBRD")]%>%
+dat[,c("HIMARSH")]<-dat[,c("HIMARSH")]%>%
   replace(is.na(.),0)
 
 
 # Remove observation records with missing predictor values (regression modeling methods cannot have missing values)
 dat_comp<-dat[complete.cases(dat[,all_terms]),]
-
-
+dat[!(dat$id%in%dat_comp$id),]
 
 
 
@@ -142,10 +142,10 @@ ggplot(left_join(distinct(dat[,c("Year","site")], .keep_all = T),n_yr_per_site,b
   labs(fill="N Years\nSite Sampled", x="Year",y="Number of Sites Sampled")+
   theme_bw()
 
-n_nest_per_siteyr<-summarise(group_by(dat,site,Year),n_nests=n())
-n_nest_per_siteyr
+n_nest_per_siteyr<-summarise(group_by(filter(dat,bp!="b"),site,Year),n_nests=n())
+arrange(n_nest_per_siteyr,desc(n_nests))
 
-#Looks like temporal samples from 2011-2015 might have the most sites continuously sampled
+# 2011-2015 has the most sites continuously sampled
 
 
 
@@ -178,7 +178,7 @@ fails$Northing = sf::st_coordinates(fails)[,2]
 fails_ss<- filter(fails,(Easting%in%nest_thin[,1]&Northing%in%nest_thin[,2]))%>%
   distinct(geometry,.keep_all = T)
 
-#number of nest records removed N=293
+#number of nest records removed N=687
 nrow(fails)-nrow(fails_ss)
 
 #recombine subset fails and fledges
@@ -189,7 +189,7 @@ nests_ss<-rbind(fails_ss%>%dplyr::select(-Easting,-Northing),non_fails)
 surv_dat<-surv_dat%>%
   filter(fate==1|id%in%fails_ss$id)
 
-table(surv_dat$fate);sum(surv_dat$fate)/nrow(surv_dat) #gives exactly 0.5 prevalence. WOW
+table(surv_dat$fate);sum(surv_dat$fate)/nrow(surv_dat) # get close to 0.5 prevelance 
 
 
 
@@ -235,9 +235,9 @@ if(ab_type=="v"){
 ## Summary of data availability after filtering and thinning/balancing
 #-----------------------------------------------------------------------------------
 nrow(pres_dat) 
-#There are 4727 nest observations
+#There are 4728 nest observations
 nrow(surv_dat)
-#There are 1610 nest fate observations
+#There are 1611 nest fate observations
 
 length(unique(pres_dat$site))
 #32 sites
