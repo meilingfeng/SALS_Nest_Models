@@ -44,16 +44,16 @@ mod_list_surv1[[2]]<-glm(y~pca,
 mod_list_pres1[[3]]<-glm(y~uvvr_mean, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[3]]<-glm(y~uvvr_diff, 
+mod_list_surv1[[3]]<-glm(y~uvvr_mean, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+mod_list_pres1[[4]]<-glm(y~uvvr_diff, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[4]]<-glm(y~uvvr_diff, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 # texture
-mod_list_pres1[[4]]<-glm(y~ent_txt, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[4]]<-glm(y~ent_txt, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
 mod_list_pres1[[5]]<-glm(y~cor_txt, 
                          data=pres_dat,
                          family = binomial(link="logit"))
@@ -88,42 +88,42 @@ mod_list_surv1[[8]]<-glm(y~HIMARSH+ndvi,
 mod_list_pres1[[9]]<-glm(y~HIMARSH+uvvr_mean, 
                           data=pres_dat,
                           family = binomial(link="logit"))
-mod_list_surv1[[9]]<-glm(y~HIMARSH+uvvr_diff, 
+mod_list_surv1[[9]]<-glm(y~HIMARSH+uvvr_mean, 
                           data=surv_dat,
                           family = binomial(link="logit"))
-# HIGH MARSH + PCA
-mod_list_pres1[[10]]<-glm(y~HIMARSH+pca, 
+mod_list_pres1[[10]]<-glm(y~HIMARSH+uvvr_diff, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[10]]<-glm(y~HIMARSH+pca, 
+mod_list_surv1[[10]]<-glm(y~HIMARSH+uvvr_diff, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+# HIGH MARSH + PCA
+mod_list_pres1[[11]]<-glm(y~HIMARSH+pca, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[11]]<-glm(y~HIMARSH+pca, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 # HIGH MARSH + texture
-mod_list_pres1[[11]]<-glm(y~HIMARSH+ent_txt, 
+mod_list_pres1[[12]]<-glm(y~HIMARSH+cor_txt, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[11]]<-glm(y~HIMARSH+cor_txt, 
+mod_list_surv1[[12]]<-glm(y~HIMARSH+cor_txt, 
                          data=surv_dat,
                          family = binomial(link="logit"))
-mod_list_pres1[[12]]<-glm(y~HIMARSH+ent_txt, 
-                          data=pres_dat,
-                          family = binomial(link="logit"))
-mod_list_surv1[[12]]<-glm(y~HIMARSH+cor_txt, 
-                          data=surv_dat,
-                          family = binomial(link="logit"))
 #HIGH MARSH + TIDE RESTRICTIONS
-mod_list_pres1[[13]]<-glm(y~HIMARSH+ent_txt, 
+mod_list_pres1[[13]]<-glm(y~HIMARSH+tideres, 
                           data=pres_dat,
                           family = binomial(link="logit"))
-mod_list_surv1[[13]]<-glm(y~HIMARSH+cor_txt, 
+mod_list_surv1[[13]]<-glm(y~HIMARSH+tideres, 
                           data=surv_dat,
                           family = binomial(link="logit"))
 
 # ALL
-mod_list_pres1[[14]]<-glm(y~ndvi+uvvr_mean+pca+ent_txt+cor_txt+tideres+HIMARSH, 
+mod_list_pres1[[14]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+cor_txt+tideres+HIMARSH, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[14]]<-glm(y~ndvi+uvvr_diff+pca+cor_txt+HIMARSH,
+mod_list_surv1[[14]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+cor_txt+tideres+HIMARSH,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
@@ -153,23 +153,23 @@ mod_tab_habstr[4,"Model_Name"]<-"Raw Reflectance (PCA)"
 mod_tab_habstr[4,"Function"]<-deparse1(mod_list_surv1[[2]]$formula)
 mod_tab_habstr[4,"AIC"]<-mod_list_surv1[[2]]$aic
 
-mod_tab_habstr[5,"Model_Name"]<-"Marsh Resilience (UVVR)"
+mod_tab_habstr[5,"Model_Name"]<-"Mean Marsh Resilience (UVVR)"
 mod_tab_habstr[5,"Function"]<-deparse1(mod_list_pres1[[3]]$formula)
 mod_tab_habstr[5,"AIC"]<-mod_list_pres1[[3]]$aic
 
-mod_tab_habstr[6,"Model_Name"]<-"Marsh Resilience (UVVR)"
+mod_tab_habstr[6,"Model_Name"]<-"Mean Marsh Resilience (UVVR)"
 mod_tab_habstr[6,"Function"]<-deparse1(mod_list_surv1[[3]]$formula)
 mod_tab_habstr[6,"AIC"]<-mod_list_surv1[[3]]$aic
 
-mod_tab_habstr[7,"Model_Name"]<-"Texture (Dissimiarlity)"
+mod_tab_habstr[7,"Model_Name"]<-"Marsh Resilience Change (UVVR)"
 mod_tab_habstr[7,"Function"]<-deparse1(mod_list_pres1[[4]]$formula)
 mod_tab_habstr[7,"AIC"]<-mod_list_pres1[[4]]$aic
 
-mod_tab_habstr[8,"Model_Name"]<-"Texture (Dissimilarity)"
+mod_tab_habstr[8,"Model_Name"]<-"Marsh Resilience Change (UVVR)"
 mod_tab_habstr[8,"Function"]<-deparse1(mod_list_surv1[[4]]$formula)
 mod_tab_habstr[8,"AIC"]<-mod_list_surv1[[4]]$aic
 
-mod_tab_habstr[9,"Model_Name"]<-"Texture (Similarity)"
+mod_tab_habstr[9,"Model_Name"]<-"Texture (Simiarlity)"
 mod_tab_habstr[9,"Function"]<-deparse1(mod_list_pres1[[5]]$formula)
 mod_tab_habstr[9,"AIC"]<-mod_list_pres1[[5]]$aic
 
@@ -201,29 +201,27 @@ mod_tab_habstr[16,"Model_Name"]<-"High Marsh + NDVI"
 mod_tab_habstr[16,"Function"]<-deparse1(mod_list_surv1[[8]]$formula)
 mod_tab_habstr[16,"AIC"]<-mod_list_surv1[[8]]$aic
 
-mod_tab_habstr[17,"Model_Name"]<-"High Marsh + UVVR"
+mod_tab_habstr[17,"Model_Name"]<-"High Marsh + Mean UVVR"
 mod_tab_habstr[17,"Function"]<-deparse1(mod_list_pres1[[9]]$formula)
 mod_tab_habstr[17,"AIC"]<-mod_list_pres1[[9]]$aic
 
-mod_tab_habstr[18,"Model_Name"]<-"High Marsh + UVVR"
+mod_tab_habstr[18,"Model_Name"]<-"High Marsh + Mean UVVR"
 mod_tab_habstr[18,"Function"]<-deparse1(mod_list_surv1[[9]]$formula)
 mod_tab_habstr[18,"AIC"]<-mod_list_surv1[[9]]$aic
 
-
-mod_tab_habstr[19,"Model_Name"]<-"High Marsh + PCA"
+mod_tab_habstr[19,"Model_Name"]<-"High Marsh + UVVR Change"
 mod_tab_habstr[19,"Function"]<-deparse1(mod_list_pres1[[10]]$formula)
 mod_tab_habstr[19,"AIC"]<-mod_list_pres1[[10]]$aic
 
-mod_tab_habstr[20,"Model_Name"]<-"High Marsh + PCA"
+mod_tab_habstr[20,"Model_Name"]<-"High Marsh + UVVR Change"
 mod_tab_habstr[20,"Function"]<-deparse1(mod_list_surv1[[10]]$formula)
 mod_tab_habstr[20,"AIC"]<-mod_list_surv1[[10]]$aic
 
-
-mod_tab_habstr[21,"Model_Name"]<-"High Marsh + Texture (Dissimilarity)"
+mod_tab_habstr[21,"Model_Name"]<-"High Marsh + PCA"
 mod_tab_habstr[21,"Function"]<-deparse1(mod_list_pres1[[11]]$formula)
 mod_tab_habstr[21,"AIC"]<-mod_list_pres1[[11]]$aic
 
-mod_tab_habstr[22,"Model_Name"]<-"High Marsh + Texture (Dissimilarity)"
+mod_tab_habstr[22,"Model_Name"]<-"High Marsh + PCA"
 mod_tab_habstr[22,"Function"]<-deparse1(mod_list_surv1[[11]]$formula)
 mod_tab_habstr[22,"AIC"]<-mod_list_surv1[[11]]$aic
 
@@ -274,16 +272,16 @@ mod_list_surv2<-list()
 mod_list_pres2[[1]]<-glm(y~HIMARSH*pca, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv2[[1]]<-glm(y~HIMARSH*pca, 
+mod_list_surv2[[1]]<-glm(y~HIMARSH*ndvi, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 
 #Do adding the interactions improve all habitat models?
-mod_list_pres2[[2]]<-glm(y~uvvr_mean+uvvr_diff+cor_txt+tideres+ent_txt+HIMARSH*pca, 
+mod_list_pres2[[2]]<-glm(y~uvvr_mean+uvvr_diff+cor_txt+tideres+ndvi+HIMARSH*pca, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv2[[2]]<-glm(y~uvvr_diff+uvvr_mean+ent_txt+tideres+cor_txt+HIMARSH*pca,
+mod_list_surv2[[2]]<-glm(y~uvvr_mean+uvvr_diff+cor_txt+tideres+pca+HIMARSH*ndvi,
                          data=surv_dat,
                          family = binomial(link="logit"))
 
@@ -300,7 +298,7 @@ mod_tab_int[1,"Model_Name"]<-"High Marsh * Raw Reflectance"
 mod_tab_int[1,"Function"]<-deparse1(mod_list_pres2[[1]]$formula)
 mod_tab_int[1,"AIC"]<-mod_list_pres2[[1]]$aic
 
-mod_tab_int[2,"Model_Name"]<-"High Marsh * Raw Reflectance"
+mod_tab_int[2,"Model_Name"]<-"High Marsh * NDVI"
 mod_tab_int[2,"Function"]<-deparse1(mod_list_surv2[[1]]$formula)
 mod_tab_int[2,"AIC"]<-mod_list_surv2[[1]]$aic
 
@@ -334,10 +332,10 @@ write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_t
 
 # select the top ranked model based on AIC (any models within 2 delta AIC)
 mod_pres<-mod_tab[mod_tab$Response=="Presence",]
-form_pres<-mod_pres[mod_pres$AIC==min(mod_pres$AIC),]$fun
+form_pres<-mod_pres[mod_pres$AIC==min(mod_pres$AIC),]$Model_Name
 
 mod_surv<-mod_tab[mod_tab$Response=="Success",]
-form_surv<-mod_surv[mod_surv$AIC==min(mod_surv$AIC),]$fun
+form_surv<-mod_surv[mod_surv$AIC==min(mod_surv$AIC),]$Model_Name
 
 # Use step function to find best model accounting for all combinations of variables
 p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
