@@ -26,6 +26,10 @@ for(i in 1:(length(all_terms))){
   qqnorm(pres_preds[,i], main = "Normal Q-Q plot")
   mtext(paste0(all_terms[i]), side = 3, line = - 2, outer = TRUE)
 }
+dev.off()
+#sqrt or log ndvi and uvvr_mean?
+
+
 
 
 ## 2. Is there collinearity among the covariates?
@@ -66,16 +70,15 @@ p1<-ggplot(pres_dat,aes(x=HIMARSH,y=pca,group=as.factor(y)))+
   theme_classic(base_size = 12)
 
 # successful nests are in high marsh with higher levels of NDVI
-#p2<-ggplot(surv_dat,aes(x=HIMARSH,y=pca,group=as.factor(y)))+
-#  geom_point(aes(color=as.factor(y)))+
-#  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
-#  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-#  labs(color = "Nest Success", linetype= "Nest Success",y = "NDVI", x="Proportion High Marsh") + 
-#  theme_classic(base_size=12)
+p2<-ggplot(surv_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+
+  geom_point(aes(color=as.factor(y)))+
+  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
+  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
+  labs(color = "Nest Success", linetype= "Nest Success",y = "NDVI", x="Proportion High Marsh") + 
+  theme_classic(base_size=12)
 
-#p1+p2
-p1
-ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions_",ab_type,".png"), width = 5, height = 5, dpi = "retina")
+p1+p2
+ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions_",ab_type,".png"), width = 10, height = 5, dpi = "retina")
 
 
 
@@ -100,9 +103,11 @@ ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/him
 #get residuals
 pres_dat$res<-mod.p$residuals  
 surv_dat$res<-mod.s$residuals 
+pres_dat$prob<-mod.p$fitted.values
+surv_dat$prob<-mod.s$fitted.values
 
 # spatial autocorrelation - doesn't seem to be any
-dat2<-st_as_sf(surv_dat, coords=c("longitude","latitude"))
+dat2<-st_as_sf(pres_dat, coords=c("longitude","latitude"))
 dat3<-st_as_sf(surv_dat, coords=c("longitude","latitude"))
 
 gram1<-variogram(res~1,data=dat2)  #filter(dat2,site=="ER")
@@ -117,32 +122,75 @@ dat2.2<-dat2%>%group_by(site,Year)%>%summarise(res=mean(res))%>%
   mutate(lag1=lag(res,n=1),
          lag2=lag(res,n=2))
 
-plot(dat2.2$res,dat2.2$lag2,xlab="t",ylab="t-1")
+dat3.2<-dat3%>%group_by(site,Year)%>%summarise(res=mean(res))%>%
+  arrange(site,Year)%>%
+  mutate(lag1=lag(res,n=1),
+         lag2=lag(res,n=2))
+
+
+ggplot(filter(dat3.2,!(is.na(lag1))),aes(x=res,y=lag2))+
+  geom_point()+
+  labs(x="Residuals",y="Residuals 1 Year Lag",title="Nest Survival")+
+  theme_classic(base_size=12)
+  
+
+ggplot(filter(dat2.2,!(is.na(lag1))),aes(x=res,y=lag1))+
+  geom_point()+
+  labs(x="Residuals",y="Residuals 1 Year Lag",title="Nest Placement")+
+  theme_classic(base_size=12)
+
+
+p1+p2
+ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/temporal_autocorr_",ab_type,".png"), width = 10, height = 5, dpi = "retina")
 
 
 #plot residuals over time and lat
-plot(pres_dat$res~pres_dat$latitude)
+ggplot(filter(pres_dat,!is.na(latitude)),aes(x=latitude,y=res))+
+  geom_point()+
+  theme_classic(base_size = 12)
 
-plot(surv_dat$res~surv_dat$latitude)
+ggplot(filter(surv_dat,!is.na(latitude)),aes(x=latitude,y=res))+
+  geom_point()+
+  theme_classic(base_size = 12)
 
-plot(pres_dat$res~pres_dat$Year)
 
-plot(surv_dat$res~surv_dat$Year)
+ggplot(filter(pres_dat,!is.na(Year)&Year!=2010),aes(x=as.factor(Year),y=res))+
+  geom_boxplot(outlier.shape = NA)+
+  geom_jitter(alpha=0.3,width=0.2)+
+  labs(x="Year",y="residuals")+
+  theme_classic(base_size = 12)
+
+
+ggplot(filter(surv_dat,!is.na(Year)&Year!=2010),aes(x=as.factor(Year),y=res))+
+  geom_boxplot(outlier.shape = NA)+
+  geom_jitter(alpha=0.3,width=0.2)+
+  labs(x="Year",y="residuals")+
+  theme_classic(base_size = 12)
+
 
 stripchart(surv_dat$res~surv_dat$site,pch=1,method="jitter")
+stripchart(pres_dat$res~pres_dat$site,pch=1,method="jitter")
 
 
 ## 5. Are relationships between response and predictors linear?
 pres_long<-pivot_longer(pres_dat,c(all_of(all_terms)),names_to = "var",values_to = "value")
 ggplot(pres_long, aes(x = value, y = y)) +
   geom_point()+
+  labs(x="Nest Presence")+
+  geom_smooth(method="gam", method.args = list( family = "binomial"))+
+  facet_wrap(~var,scales = "free")
+
+surv_long<-pivot_longer(surv_dat,c(all_of(all_terms)),names_to = "var",values_to = "value")
+ggplot(surv_long, aes(x = value, y = y)) +
+  geom_point()+
+  labs(x="Nest Survival")+
   geom_smooth(method="gam", method.args = list( family = "binomial"))+
   facet_wrap(~var,scales = "free")
 ## suggest a strong non-linearlity, although an odd one                    
-ggplot(surv_dat, aes(x = log(ndvi+0.01), y = y)) +
+ggplot(pres_dat, aes(x = log(ndvi+0.01), y = y)) +
   geom_smooth(method="gam", method.args = list( family = "binomial")) +
   theme_bw()
-ggplot(surv_dat, aes(x = ndvi, y = y)) +
+ggplot(pres_dat, aes(x = ndvi, y = y)) +
   geom_smooth(method="gam", method.args = list( family = "binomial")) +
   theme_bw()
 #log ndvi
