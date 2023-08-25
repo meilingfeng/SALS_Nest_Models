@@ -22,11 +22,13 @@ path_out<-"D:/Nest_Models/Outputs/"
 # -------------------------------------
 
 # load nest observation shapefile
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
-  # filter records to just SALS or another species of interest
-  filter(Species=="SALS"&
+nests_all<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
   # remove records missing coordinate information or that have coordinate errors
-           crd_typ!=1&mssng_l_!=1&mssng_c!=1)%>%
+  filter(crd_typ!=1&mssng_l_!=1&mssng_c!=1&Year>=2010)
+  
+nests<-nests_all%>%
+  # filter records to just SALS or another species of interest
+  filter(Species=="SALS")%>%
   # convert all coordinates to decimal degrees (NAD83) and create Long and Lat columns
   st_transform("EPSG:4269")%>%
   mutate(Long = sf::st_coordinates(.)[,1],
@@ -47,7 +49,7 @@ nrow(nests)
 nrow(nests[!(is.na(nests$fate)),])
 #There are 2807 nest fate observations
 
-length(unique(nests$site))
+length(unique(nests_all$site))
 #53 sites
 
 sort(unique(nests$Year))
@@ -61,6 +63,7 @@ nrow(nests[!(is.na(nests$fate)),])
 
 length(unique(nests$site))
 #31 sites
+t<-summarise(group_by(nests,site),n=n())
 
 
 
