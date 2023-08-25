@@ -8,6 +8,7 @@ library(gbm)
 source("05a_Set_Model_Parameters.R")
 
 # Don't predict to spatial surface yet
+build<-T
 predict.surf<-F
 # Run only the test data predictions using 3 modeling methods
 source("05c_boosted_regression_trees.R")
@@ -185,7 +186,7 @@ ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_pres_
        width=8,height=10,dpi=300,units = "in")
 
 
-  # then for the best model, compare across regions
+  # then for the best modeling method, compare across regions
 pres_regions<-d.pres[[1]]%>%
   left_join(pres_dat[,c("id","region")],by="id")%>%
   mutate(y=ifelse(obs==0,"Absent","Present"),
@@ -366,3 +367,13 @@ p6<-ggerrorplot(var_s, x = "var", y = "importance",
 ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_",ab_type,"_brt.png"),
        width=8,height=8,dpi=300,units = "in")
 
+
+
+
+# Predict
+# Predict to spatial surface, don't build models
+predict.surf<-T
+build<-F
+# Run only with GLM and the better ML method
+source("05c_boosted_regression_trees.R")
+source("05b_GLM_Selection_Prediction.R")
