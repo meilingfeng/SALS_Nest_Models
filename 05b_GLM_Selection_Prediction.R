@@ -325,27 +325,26 @@ mod_tab<-rbind(mod_tab_habstr,mod_tab_int)%>%
          Overall_ΔAIC_across_Comparisons=round(AIC-min(AIC),1))%>%
   arrange(Response,Model_Comparison,dAIC)%>%
   ungroup()%>%
-  dplyr::select(-Function,-dAIC)
+  dplyr::select(-dAIC)
 
-write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"), row.names = F)
-
+if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"))){
+write.csv(mod_tab%>%dplyr::select(-Function),paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"), row.names = F)
+}
 
 # select the top ranked model based on AIC (any models within 2 delta AIC)
 mod_pres<-mod_tab[mod_tab$Response=="Presence",]
-form_pres<-mod_pres[mod_pres$AIC==min(mod_pres$AIC),]$Model_Name
+form_pres<-mod_pres[mod_pres$AIC==min(mod_pres$AIC),]$Function
 
 mod_surv<-mod_tab[mod_tab$Response=="Success",]
-form_surv<-mod_surv[mod_surv$AIC==min(mod_surv$AIC),]$Model_Name
+form_surv<-mod_surv[mod_surv$AIC==min(mod_surv$AIC),]$Function
 
 # Use step function to find best model accounting for all combinations of variables
-p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
-# for pres, keeps all
-s.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), surv_dat,family=binomial(link = "logit")))
-# for surv, removes ent_txt, uvvr_mean, ndvi - use cor and diff instead for these
-#Use proportion of high marsh instead of high marsh at nest center - error in nest location and resolution uncertainty in veg layer
+#p.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), pres_dat,family=binomial(link = "logit")))
+#s.mod<-step(glm(as.formula(paste0("y~",paste(all_terms[which(!(all_terms%in%c("HIMARSH","pca")))],collapse = "+"),"+HIMARSH*pca")), surv_dat,family=binomial(link = "logit")))
 
 
 
+if(build==T){
 ## 2. Predict to test data
 #--------------------------------------
 
@@ -355,7 +354,7 @@ d.surv.glm<-list()
 for (i in 1:k) {
   train <- pres_dat[pres_dat$group != i,]
   test <- pres_dat[pres_dat$group == i,]
-  #mod.p <- glm(form_pres, data = train, family = binomial(link = "logit"))
+  mod.p <- glm(form_pres, data = train, family = binomial(link = "logit"))
   d.pres.glm[[i]] <- data.frame(id=test$id,
                                 obs=test$y, 
                                 pred=predict(mod.p,test, type="response"))
@@ -364,24 +363,30 @@ for (i in 1:k) {
 for (i in 1:k) {
   train <- surv_dat[surv_dat$group != i,]
   test <- surv_dat[surv_dat$group == i,]
-  #mod.s <- glm(form_surv, data = train, family = binomial(link = "logit"))
+  mod.s <- glm(form_surv, data = train, family = binomial(link = "logit"))
   d.surv.glm[[i]] <- data.frame(id=test$id,
                                 obs=test$y, 
                                 pred=predict(mod.s,test, type="response"))
 }
 
+}
+
+
 
 if(predict.surf==T){
 ## 3. Predict to Spatial Surface
 #-------------------------------------------
+final_mod_pres <- glm(form_pres, data = pres_dat, family = binomial(link = "logit"))
+final_mod_surv <- glm(form_surv, data = surv_dat, family = binomial(link = "logit"))
 
+if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",1,"_pres_GLMpreds_30m",ab_type,".tif"))){
 # a) list predictor variables in the selected models
 terms_pres<-unlist(strsplit(as.character(substring(form_pres,5)),split=" * ", fixed=TRUE))%>%
   strsplit(split=" + ", fixed=TRUE)%>%
   unlist()%>%
   unique()
 
-terms_pres<-unlist(strsplit(as.character(substring(form_surv,5)),split=" * ", fixed=TRUE))%>%
+terms_surv<-unlist(strsplit(as.character(substring(form_surv,5)),split=" * ", fixed=TRUE))%>%
   strsplit(split=" + ", fixed=TRUE)%>%
   unlist()%>%
   unique()
@@ -410,9 +415,9 @@ for (i in 1:length(file_list_all_zones)){
   mod_preds_p<-predictors[[names(predictors)%in%terms_pres]]
   mod_preds_s<-predictors[[names(predictors)%in%terms_surv]]
   
-  # d) set areas outside marsh to NA (mask all predictors)
+  # d) set upland and open water to NA (mask all predictors)
   mask<-predictors["Highmarsh"]
-  mask[mask==0|mask==9|mask==7|mask==8]<-NA
+  mask[mask==0|mask==9|mask==7]<-NA
   preds_mask_s<-list()
   preds_mask_p<-list()
   for(j in 1:nlyr(mod_preds_s)){
@@ -422,8 +427,6 @@ for (i in 1:length(file_list_all_zones)){
   for(j in 1:nlyr(mod_preds_p)){
     preds_mask_p[[j]]<-mask(mod_preds_p[[j]],mask)
   }
-  
-  
   
   
   
@@ -438,70 +441,66 @@ for (i in 1:length(file_list_all_zones)){
   glm_predict_pres[[i]]<-predict(preds_mask_p2,final_mod_pres, type="response")
   glm_predict_surv[[i]]<-predict(preds_mask_s2,final_mod_surv, type="response")
   
+  #Write predicted values to rasters
+  writeRaster(glm_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_pres_predsGLM_30m",ab_type,".tif"),overwrite=T)
+  writeRaster(glm_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/z",i,"_surv_predsGLM_30m",ab_type,".tif"),overwrite=T)
   
   #Write predicted values to csv
+#  pres_out<-rast(list(preds_mask_p2,glm_predict_pres[[i]]))
+#  names(pres_out[[nlyr(pres_out)]])<-"predictions"
+#  mat_p[[i]]<-as.data.frame(terra::as.matrix(pres_out,wide=F))%>%
+#    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
   
-  
-  pres_out<-rast(list(preds_mask_p2,glm_predict_pres[[i]]))
-  names(pres_out[[nlyr(pres_out)]])<-"predictions"
-  mat_p[[i]]<-as.data.frame(terra::as.matrix(pres_out,wide=F))%>%
-    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-  
-  surv_out<-rast(list(preds_mask_s2,glm_predict_surv[[i]]))
-  names(surv_out[[nlyr(surv_out)]])<-"predictions"
-  mat_s[[i]]<-as.data.frame(terra::as.matrix(surv_out,wide=F))%>%
-    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-  
-  
-  
+#  surv_out<-rast(list(preds_mask_s2,glm_predict_surv[[i]]))
+#  names(surv_out[[nlyr(surv_out)]])<-"predictions"
+#  mat_s[[i]]<-as.data.frame(terra::as.matrix(surv_out,wide=F))%>%
+#    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
   
   #zone 1 is too big, process it in parts
-  if(i==1){
+#  if(i==1){
     
-    n_div<-4
-    dat_zone_list<-list()
-    row_start<-c()
-    row_end<-c()
-    
-    
-    pres_out<-rast(list(preds_mask_p2,glm_predict_pres[[i]]))
-    names(pres_out[[nlyr(pres_out)]])<-"predictions"
+#    n_div<-4
+#    dat_zone_list<-list()
+#    row_start<-c()
+#    row_end<-c()
     
     
-    surv_out<-rast(list(preds_mask_s2,glm_predict_surv[[i]]))
-    names(surv_out[[nlyr(surv_out)]])<-"predictions"
+#    pres_out<-rast(list(preds_mask_p2,glm_predict_pres[[i]]))
+#    names(pres_out[[nlyr(pres_out)]])<-"predictions"
     
-    #divide zone into 4
-    for(j in 1:n_div){
-      row_start_p[j]<-((round(nrow(pres_out)/n_div))*(j-1))+1
-      row_end_p[j]<-(round(nrow(pres_out)/n_div))*j
-      pres_out_sub<-pres_out[c(row_start_p[j]:row_end_p[j]),c(1:ncol(pres_out)),drop=F]
+    
+#    surv_out<-rast(list(preds_mask_s2,glm_predict_surv[[i]]))
+#    names(surv_out[[nlyr(surv_out)]])<-"predictions"
+    
+#    #divide zone into 4
+#    for(j in 1:n_div){
+#      row_start_p[j]<-((round(nrow(pres_out)/n_div))*(j-1))+1
+#      row_end_p[j]<-(round(nrow(pres_out)/n_div))*j
+#      pres_out_sub<-pres_out[c(row_start_p[j]:row_end_p[j]),c(1:ncol(pres_out)),drop=F]
       
-      row_start_s[j]<-((round(nrow(surv_out)/n_div))*(j-1))+1
-      row_end_s[j]<-(round(nrow(surv_out)/n_div))*j
-      surv_out_sub<-surv_out[c(row_start_s[j]:row_end_s[j]),c(1:ncol(surv_out)),drop=F]
+#      row_start_s[j]<-((round(nrow(surv_out)/n_div))*(j-1))+1
+#      row_end_s[j]<-(round(nrow(surv_out)/n_div))*j
+#      surv_out_sub<-surv_out[c(row_start_s[j]:row_end_s[j]),c(1:ncol(surv_out)),drop=F]
       
       #coerce raster stack into a matrix with datasets (layers) as columns and cells as rows (wide = F will do this)
-      mat_p_z1[[j]]<-as.data.frame(terra::as.matrix(pres_out_sub,wide=F))%>%
-        mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-      
-      mat_s_z1[[j]]<-as.data.frame(terra::as.matrix(surv_out_sub,wide=F))%>%
-        mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-    }
+#      mat_p_z1[[j]]<-as.data.frame(terra::as.matrix(pres_out_sub,wide=F))%>%
+#        mutate(id=paste0(seq(1,nrow(.),1),"z",i))
+#      
+#      mat_s_z1[[j]]<-as.data.frame(terra::as.matrix(surv_out_sub,wide=F))%>%
+#        mutate(id=paste0(seq(1,nrow(.),1),"z",i))
+#    }
     
     
     #bind all the zone sections into one dataframe
-    mat_p[[1]]<-do.call("rbind",mat_p_z1)
-    mat_s[[1]]<-do.call("rbind",mat_s_z1)
-  }
+#    mat_p[[1]]<-do.call("rbind",mat_p_z1)
+#    mat_s[[1]]<-do.call("rbind",mat_s_z1)
+#  }
   
   
   #write each zone prediction dataset to matrix file
-  write.csv(mat_p[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Placement/Z",i,"_predictionGLM_30m_",ab_type,"_placement.csv"),row.names = F)
-  write.csv(mat_s[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Success/Z",i,"_predictionGLM_30m_",ab_type,"_success.csv"),row.names = F)
+#  write.csv(mat_p[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Placement/Z",i,"_predictionGLM_30m_",ab_type,"_placement.csv"),row.names = F)
+#  write.csv(mat_s[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Success/Z",i,"_predictionGLM_30m_",ab_type,"_success.csv"),row.names = F)
   
-  #Write rasters
-  writeRaster(glm_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_pres_predsGLM_30m",ab_type,".tif"),overwrite=T)
-  writeRaster(glm_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/z",i,"_surv_predsGLM_30m",ab_type,".tif"),overwrite=T)
+}
 }
 }
