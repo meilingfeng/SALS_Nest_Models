@@ -268,9 +268,17 @@ pres_dat$y<-pres_dat$presence
 
 surv_dat$y<-surv_dat$fate
 
-
-
-
+#*try using background points for success models***
+#t<-rbind(pres_dat[pres_dat$bp=="b",],surv_dat[surv_dat$fate==1,])
+#t_f<-t[t$y==0,]
+#t_s<-t[t$y==1,]
+#t_sum<-summarize(group_by(t_s,region),n=n())
+#t_f<-rbind(t_f[sample(which(t_f$region==1),as.numeric(t_sum[1,2])),],
+#                    t_f[sample(which(t_f$region==3),as.numeric(t_sum[2,2])),],
+#                    t_f[sample(which(t_f$region==4),as.numeric(t_sum[3,2])),],
+#                    t_f[sample(which(t_f$region==5),as.numeric(t_sum[4,2])),])
+#surv_dat<-rbind(t_f,t_s)
+#***
 
 table(pres_dat$y)
 table(surv_dat$y)
