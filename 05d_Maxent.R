@@ -11,6 +11,7 @@ if(!exists("pres_dat")){
   source("05a_Set_Model_Parameters.R")
 } 
 
+if(build==T){
 # select all predictors and response
 pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))
 surv_dat2<-surv_dat%>%dplyr::select("id","y","group",all_of(all_terms))
@@ -79,7 +80,7 @@ for(i in 1:k){
 
 }
   
-
+}
 
 
 if(predict.surf==T){  
