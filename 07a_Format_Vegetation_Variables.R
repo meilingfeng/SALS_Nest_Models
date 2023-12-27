@@ -15,27 +15,27 @@ library(vegan)
 
 ## 1. file paths
 #------------------------------------
-dat_path<-"D:/Nest_Models/Data/"
-path_out<-"D:/Nest_Models/Outputs/"
-
+dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
+path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
 ## 2. Read in vegetation data
 #------------------------------------
 # There is veg data from 3 different surveys:
 # a) transect survey points (only for conservation/restoration sites, measured in a transect line from upland to coast, centered on rapid veg points)
-transect_dat<-read.csv(paste0(dat_path,"Survey Database/Point_Intercept_Vegetation_TRUEFALSE_20221209_updated.csv"))%>%
+transect_dat<-read.csv(paste0(dat_path,"Survey Database/Point_Vegetation_20221209.csv"))%>%
   # add consistent columns names to each dataset (id and year)
-  rename(id=Point_ID)%>%
-  mutate(Time=substr(PointInterceptDate,nchar(PointInterceptDate)-4,nchar(PointInterceptDate)),
-         Date=substr(PointInterceptDate,1,nchar(PointInterceptDate)-5),
-         year=year(mdy(Date)),
-         Month=month(mdy(Date)),
-         Day=day(mdy(Date)))%>%
-  filter(year!=2023) #this year's data has not been QA/QC yet
+    rename(id=Point_ID)%>%
+    mutate(year=as.factor(Year))
+ #          Time=substr(PointInterceptDate,nchar(PointInterceptDate)-4,nchar(PointInterceptDate)),
+ #        Date=substr(PointInterceptDate,1,nchar(PointInterceptDate)-5),
+ #        year=year(mdy(Date)),
+ #        Month=month(mdy(Date)),
+  #       Day=day(mdy(Date)))%>%
+ # filter(year!=2023) #this year's data has not been QA/QC yet
 # b) rapid vegetation data (measured within a 50m radius circle)
-rapid_dat<-read.csv(paste0(dat_path,"Survey Database/Rapid_Vegetation_20230303_updated.csv"))%>%
+rapid_dat<-read.csv(paste0(dat_path,"Survey Database/Rapid_Vegetation_20230303.csv"))%>%
   rename(id=BirdPtID)%>%
-  mutate(year=as.factor(year(mdy(Date))))%>%
-  filter(year!="2023")
+  mutate(year=as.factor(year(ymd(Date))))
+ # filter(year!="2023")
 # c) demographic random vegetation data (measured within 1m square)
 demo_dat<-read.csv(paste0(dat_path,"Demographic Database/Veg_2011-2020.csv"))%>%
   rename(id=VegPointID)%>%
@@ -255,6 +255,33 @@ demo_nest<-demo_dat%>%
 
 ## 2. Rapid vegetation data (Survey database)
 #--------------------------------------------------
+#Understand which and how many species was recorded in the datasheet
+rapid_domsp<-cbind(rep(rapid_dat$id,10),unlist(rapid_dat[,c(27,29,31,33,35,37,39,41,43,45)]),rep(rapid_dat$year,10))%>%
+  as.data.frame.matrix()
+colnames(rapid_domsp)<-c("id","species","year")
+count_unique<-function(x){
+  specieslist=unique(x$species)[-1]
+  countsite=c()
+  countyear=c()
+  for (i in 1:length(specieslist)){
+    sitelist<-rapid_domsp$id[grepl(paste0('^',specieslist[i],'$'),rapid_domsp$species)]
+    yearlist<-rapid_domsp$year[grepl(paste0('^',specieslist[i],'$'),rapid_domsp$species)]
+    uniquesite<-unique(sitelist)
+    countsite<-c(countsite,length(uniquesite))
+    uniqueyear<-unique(yearlist)
+    countyear<-c(countyear,length(uniqueyear))
+  }
+  output=data.frame(species=specieslist,countsite=countsite,countyear=countyear)
+  return(output)
+}
+count<-as.data.frame(count_unique(rapid_domsp))
+frequency<-as.data.frame(table(unlist(rapid_dat[,c(27,29,31,33,35,37,39,41,43,45)])))
+colnames(frequency)<-c("species","freq")
+rapid_sum<-merge(count,frequency,by="species")
+rapid_sum
+if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/plant_species_freq",".csv"))){
+  write.csv(rapid_sum,paste0(path_out,"Final_outputs/Model_Results/plant_species_freq",".csv"), row.names = F)
+}
 rapid_dat2<-rapid_dat%>%
   ## indicate dataset is rapid_veg
   mutate(data="rapid_veg")%>%
@@ -263,7 +290,7 @@ rapid_dat2<-rapid_dat%>%
   ## remove duplicate records
   distinct(pick(c("id","year","Date","Time")),.keep_all = TRUE)%>%
   ## Select Important Variables:
-  dplyr::select(id, Lat, year,Date,SHARPTide,Time,data,
+  dplyr::select(id, Lat, Long, year,Date,SHARPTide,Time,data,
                 #Categorical variables:
                 # a) Percent cover within 50 m categories for low and high marsh, saltmarsh border, brackish terrestrial border, invasive species, etc
                 LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, PannesChannelsCC,UplandCC,WrackCC=Wrack,OpenWaterCC=OpenWater,
@@ -285,7 +312,7 @@ rapid_dat2<-rapid_dat%>%
                            # groups together 1,2,3 -> 1-25%, marks as 2
                            .x%in%c("1","2","3")~2,
                            # 4 -> 26-50%, mark as 3
-                           # 5 -> 50-75%, mark as 4
+                           # 5 -> 51-75%, mark as 4
                            # 6-> 76-100%, mark as 5
                            .x=="4"~3,
                            .x=="5"~4,
@@ -294,36 +321,23 @@ rapid_dat2<-rapid_dat%>%
                             #factor(LowMarshCC, levels=c('0', '<1', '1-25', '26-50','51-75','76-100'))
     # Aggregate categories for species names
   mutate(across(c(DomSp1,DomSp2,DomSp3,DomSp4,DomSp5,DomSp6,DomSp7,DomSp8,DomSp9,DomSp10),
-                ~case_when(grepl("stichlis",.x,)~"distichlis_pct",
-                           grepl("atens",.x)~"patens_pct",
+                #Group species based on marsh habitat
+                ~case_when(
                            grepl("lterniflora-tall",.x)~"alt_tall_pct",
                            grepl("lterniflora-short",.x)~"alt_short_pct",
-                           grepl("ragmites",.x)~"phrag_pct",
-                           grepl("gerardii",.x)~"gerardii_pct",
                            grepl("lterniflora",.x)&!grepl("lterniflora-tall|lterniflora-short",.x)~"alt_pct",
-                           grepl("Conifer|Juniperus|Prunus|Pinus|Quercus|Acer",.x)&.x!="Angiosperm/Conifer shrub" ~"trees_pct",
-                           grepl("shrub|Bocconia|Baccharis|Iva|Morella|Myrica|Elaeagnus umbellata",.x)~"shrubs_pct", #Elaeagnus umbellata is invasive
-                           grepl("Bare Ground",.x)&.x!="Bare Ground (road/pavement)"~"bare_pct",#includes organic matter, sand, mud
-                           grepl("Water|water",.x)&!grepl("ditch/creek|pool/panne",.x)~"open_water_pct", #(impoundment, Lemna is duckweed, usually just in standing water)
-                           grepl("ditch/creek|Channel|pool/panne",.x)~"pannes_channels_pct",
-                           grepl("pavement|Mowed Grass|impoundment",.x)~"modified_habitat_pct", #also ditches and channels?
-                           grepl("Upland",.x)&.x!="Upland (pavement)"~"upland_pct",
-                           grepl("Non-saltmarsh herbaceous spp.|Angiosperm|Unknown",.x)&.x!="Angiosperm/Conifer shrub"~"other_sp_pct",#divide into terrestrial and aquatic species? Celastrus orbiculatus and Lythrum salicaria is invasive
-                           grepl("Pycnanthemum|Lythrum|Hibiscus|Helenium amarum|Lespedeza|Symphyotrichum|Erechtites|Verbena|Glaux|Phytolacca|Pluchea|Argentina|Tripleurospermum|Suaeda|Apocynum cannabinum|Ptilimnium|Triglochin|Atriplex|Toxicodendron|Impatiens|Amaranthus|Sesuvium|Mikania|Celastrus orbiculatus",.x)~ "other_marsh_sp_pct",
-                           grepl("Alisma|latifolia|Sagittaria|Peltandra|Ludwigia|Nuphar|Pontederia|Lemna",.x)~"other_aquatic_sp_pct",
-                           grepl("Lythrum|Rubus|Thinopyrum|Elaeagnus umbellata",.x)~ "invasive_pct", #includes herbaceous, grasses, shrubs
-                           grepl("Juncus",.x)&!grepl("gerardii",.x)~"rushes_pct", #(juncus roemerianus,arcticus littoralis) , exclude gerardii?
-                           grepl("Sedge|Bolboschoenus|Schoenoplectus|Carex|Scirpus|Cyperus|Eleocharis",.x)~"sedges_pct", #(Schoenoplectus pungens,tabernaemontani)
-                           grepl("Poaceae sp.|Leersia|Spartina||Poa sp.|Panicum|Elymus|Festuca|Puccinellia|Ammophila|Zizania|Setaria|Echinochloa|Leptochloa",.x)&!grepl("atens|lterniflora",.x)~"grasses_pct", #exclude alterniflora and patens
-                           grepl("Spartina",.x)&!grepl("atens|lterniflora",.x)~"cord_grasses_pct", #(pectinata,cynosuroides) exclude alt and patens
-                           grepl("Solidago",.x)~"goldenrods_pct", #(sempervirens)
-                           grepl("Plantago",.x)~"plantains_pct", #(maritima)
-                           grepl("Typha",.x)~"cat_tails_pct", #(angustifolia,latifolia)
-                           grepl("Limonium",.x)~"limonium_pct", #(carolinianum,nashii)
-                           grepl("Polygonum",.x)~"polygonum_pct", #buckwheat and knotgrasses (pensylvanicum,punctatum,perfoliatum)
-                           grepl("Salicornia",.x)~"salicornia_pct", #(depressa,bigelovii)
-                           grepl("Wrack",.x)~"wrack_pct",
-                           grepl("Thatch",.x)~"thatch_pct",
+                           grepl("atens",.x)~"patens_pct",
+                           grepl("Phragmites",.x)~"phrag_pct",
+                           grepl("stichlis",.x,)~"distichlis_pct",
+                           grepl("gerardii",.x)~"gerardii_pct",
+                           grepl("Iva",.x)~"iva_pct",
+                           grepl("Spartina cynosuroides",.x)~"low_marsh_pct",
+                           grepl("robustus|Salicornia|americanus|Juncus roemerianus|Limonium|pungens|Glaux",.x)~"high_marsh_pct", #(pectinata,cynosuroides) exclude alt and patens
+                           grepl("Typha augustifolia|Spartina pectinata",.x)~"brackish_border_pct", #(angustifolia,latifolia)
+                           grepl("Solidago sempervirens|Baccharis halimifolia",.x)~"saltmarsh_border_pct", #(sempervirens,graminifolia)
+                           grepl("Conifer",.x)&.x!="Angiosperm/Conifer shrub" ~"trees_pct",
+                           grepl("Water|pool/panne",.x)~"water_pct", #(impoundment, Lemna is duckweed, usually just in standing water)
+                           grepl("Upland",.x)~"upland_pct",
                            grepl("Algae|S. distichum",.x)~NA)))%>%
     # adjust the missing data values for snag count variable
   mutate(DeadSnags=ifelse(DeadSnags%in%c("NULL","-1"),NA,as.numeric(DeadSnags)))
@@ -347,7 +361,7 @@ rapid_dat4<- pivot_longer(rapid_dat2,cols=contains("Percent"),names_to = "transe
 rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date","SHARPTide","data","Time"))%>%
   dplyr::select(-transect)%>%
     # we grouped species into bigger categories, so now we need to sum together the individual percentages within each category
-  group_by(id,year,Date,SHARPTide,Lat, data, Time,
+  group_by(id,year,Date,SHARPTide,Lat, Long,data, Time,
            LowMarshCC,SaltMarshTBorderCC,HighMarshCC,BrackishTBorderCC,InvasivesCC,
            PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC,DeadSnags,species)%>%
    summarise(percent=sum(percent,na.rm=T))%>%
@@ -355,7 +369,7 @@ rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date",
     # Then pivot wider so each species category is a variable (column) with percent cover in the plot as the values
   pivot_wider(names_from = species,values_from = percent)%>%
     # remove the NA species column (make sure its column 16)
-  dplyr::select(-18)
+  dplyr::select(-19)
     # fill in NA's with 0's if data was recorded for either the species section or cover class section
 is.zero <- function(x) {
   x == 0
@@ -365,25 +379,25 @@ rapid_dat6<-rapid_dat5%>%
   mutate(across(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
                   PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),
                            ~ifelse(is.na(.x),0,.x)),
-         across(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_marsh_sp_pct,other_aquatic_sp_pct,
-                  invasive_pct,sedges_pct,grasses_pct,modified_habitat_pct,shrubs_pct,trees_pct,rushes_pct,upland_pct,
-                  phrag_pct,pannes_channels_pct,open_water_pct,bare_pct),
+         across(c(alt_pct,alt_short_pct,alt_tall_pct,patens_pct,phrag_pct,distichlis_pct,gerardii_pct,iva_pct,
+                  low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,trees_pct,
+                  water_pct,upland_pct),
                 ~ifelse(is.na(.x),0,.x)),
       # mark if all data is missing for the cover class or species sections, this part of the survey was probably not conducted
          CC_available=ifelse(if_all(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
                                  PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),is.zero),0,1),
-         sp_pct_available=ifelse(if_all(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_marsh_sp_pct,other_aquatic_sp_pct,
-                                          invasive_pct,sedges_pct,grasses_pct,modified_habitat_pct,shrubs_pct,trees_pct,rushes_pct,upland_pct,
-                                          phrag_pct,pannes_channels_pct,open_water_pct,bare_pct),is.zero),0,1)
+         sp_pct_available=ifelse(if_all(c(alt_pct,alt_short_pct,alt_tall_pct,patens_pct,phrag_pct,distichlis_pct,gerardii_pct,iva_pct,
+                                          low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,trees_pct,
+                                          water_pct,upland_pct),is.zero),0,1)
                 )%>%
   filter(!(CC_available==0&sp_pct_available==0))
 
 ## Add dominant species and species presence variables:
   # if species has more than 0%, mark as present with a 1, otherwise 0
 rapid_dat7<-rapid_dat6%>%
-  mutate(across(c(alt_pct,alt_short_pct,alt_tall_pct,distichlis_pct,gerardii_pct,patens_pct,other_sp_pct,other_marsh_sp_pct,other_aquatic_sp_pct,
-                  invasive_pct,sedges_pct,grasses_pct,modified_habitat_pct,shrubs_pct,trees_pct,rushes_pct,upland_pct,
-                  phrag_pct,pannes_channels_pct,open_water_pct,bare_pct),
+  mutate(across(c(alt_pct,alt_short_pct,alt_tall_pct,patens_pct,phrag_pct,distichlis_pct,gerardii_pct,iva_pct,
+                  low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,trees_pct,
+                  water_pct,upland_pct),
                 ~ifelse(.x>0,1,0)),
          across(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
                   PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),
@@ -391,14 +405,14 @@ rapid_dat7<-rapid_dat6%>%
 
   # list the species with the highest percent as the dominant species
 rapid_dat7$dom_species<-colnames(
-  rapid_dat7[,c("alt_pct","alt_short_pct","alt_tall_pct","distichlis_pct","gerardii_pct","patens_pct","other_sp_pct","other_marsh_sp_pct","other_aquatic_sp_pct",
-                "invasive_pct","sedges_pct","grasses_pct","modified_habitat_pct","shrubs_pct","trees_pct","rushes_pct","upland_pct",
-                "phrag_pct","pannes_channels_pct","open_water_pct","bare_pct")]
+  rapid_dat7[,c("alt_pct","alt_short_pct","alt_tall_pct","patens_pct","phrag_pct","distichlis_pct","gerardii_pct","iva_pct",
+                "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
+                "water_pct","upland_pct")]
 )[
-  apply(rapid_dat7[,c("alt_pct","alt_short_pct","alt_tall_pct","distichlis_pct","gerardii_pct","patens_pct","other_sp_pct","other_marsh_sp_pct","other_aquatic_sp_pct",
-                      "invasive_pct","sedges_pct","grasses_pct","modified_habitat_pct","shrubs_pct","trees_pct","rushes_pct","upland_pct",
-                      "phrag_pct","pannes_channels_pct","open_water_pct","bare_pct")],1,which.max)
-]
+  apply(rapid_dat7[,c("alt_pct","alt_short_pct","alt_tall_pct","patens_pct","phrag_pct","distichlis_pct","gerardii_pct","iva_pct",
+                      "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
+                      "water_pct","upland_pct")],1,which.max)
+  ]
     #format the species names by removing the percent column marker
 rapid_dat7$dom_species<-gsub("_pct","",rapid_dat7$dom_species)
 
@@ -417,12 +431,12 @@ rapid_dat7$dom_cover<-gsub("CC","",rapid_dat7$dom_cover)
 rapid_dat7<-rapid_dat7%>%
   mutate(dom_cover=ifelse(CC_available==0,NA,dom_cover),
          dom_species=ifelse(sp_pct_available==0,NA,dom_species))
-
+rapid_dat7
   # adjust the columns markers to presence absence instead of percent
-names(rapid_dat7)[c(18:38)] <- gsub("_pct","_pres",names(rapid_dat7[,c(18:38)]))
-names(rapid_dat7)[c(8:16)] <- gsub("CC","_pres",names(rapid_dat7[,c(8:16)]))
+names(rapid_dat7)[c(19:33)] <- gsub("_pct","_pres",names(rapid_dat7[,c(19:33)]))
+names(rapid_dat7)[c(9:17)] <- gsub("CC","CC_pres",names(rapid_dat7[,c(9:17)]))
   # and join the percent and presence variables into one table
-rapid_dat8<-left_join(rapid_dat6,rapid_dat7,by=c("id","year","Date","SHARPTide","Lat","DeadSnags","data","Time","CC_available","sp_pct_available"))
+rapid_dat8<-left_join(rapid_dat6,rapid_dat7,by=c("id","year","Date","SHARPTide","Lat","Long","DeadSnags","data","Time","CC_available","sp_pct_available"))
 
 
 
@@ -447,24 +461,6 @@ rapid_dat9<-rapid_dat8%>%
   # How many observations were removed during filtering?
 nrow(rapid_dat8)-nrow(rapid_dat9) # filtering for complete data removed 893 records,
 nrow(rapid_dat)-nrow(rapid_dat9) # in total removed 1,430 records during cleaning (including duplicate records)
-
-  # Look at duplicate data
-nup<-rapid_datup%>%
-  group_by(id,Date)%>%
-  summarise(count=n())%>%
-  filter(count>1)
-  # how many and which are duplicated?
-dupsup<-nup%>%left_join(rapid_datup,by=c("id","Date"))%>%
-  group_by_all() %>%
-  mutate(duplicated = n() > 1)%>%
-  filter(duplicated==F)
-t<-anti_join(dups,dupsup,by=c("id","Date"))
-write.csv(dups,paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/rapid_veg_duplicates.csv"),row.names = F)
-  # which observers have duplicate surveys?
-dups2<-dups%>%group_by(ObserverInitials)%>%
-  summarise(num_dups=n())
-write.csv(dups2,paste0(path_out,"Intermediate_outputs/Data_cleaning_notes/rapid_veg_duplicates_obsInitials.csv"),row.names = F)
-
 
   # number of survey years per point
 nyear<-rapid_dat9%>%
@@ -496,7 +492,7 @@ length(unique(rapid_dat9$id))
 t3<-t%>%
   group_by(id)%>%
   filter(year%in%c(max(as.numeric(as.character(year))),min(as.numeric(as.character(year)))))
-ggplot(rapid_dat9%>%filter(id=="192567_HHO00"),aes(y=distichlis_pct,x=year,group=SHARPTide))+
+ggplot(rapid_dat9%>%filter(id=="192567_p1"),aes(y=distichlis_pct,x=year,group=SHARPTide))+
   geom_point(aes(color=as.factor(SHARPTide)))+
   geom_smooth(method="lm",aes(linetype=as.factor(SHARPTide)),color="black")+
   #scale_color_manual(values=c("#5ab4ac","#d8b365"))+
@@ -508,6 +504,11 @@ ggplot(t%>%filter(year%in%c("2011","2022")&id%in%unique(t$id)[1:10]),aes(group=i
 
 ## 3. Transect vegetation data (Survey database)
 #---------------------------------------------------------
+transect_domsp<-table(transect_dat$ScientificName)%>%
+  sort()%>%
+  as.data.frame()
+colnames(transect_domsp)<-c("species","frequency")
+
 #ScientificName, 1-10,Year, Point_ID
 transect_dat2<-transect_dat%>%
   ## indicate dataset is transect_veg
@@ -526,42 +527,31 @@ transect_dat3<-transect_dat2%>%
 
 transect_dat4<-transect_dat3%>%
   ## Select Important Variables:
-  dplyr::select(id, Lat, SurveyDate.1,Month,Day,Year,Time,data,
+  dplyr::select(id,Long,Lat,SurveyDate.1,Month,Day,Year,Time,data,
                 #Presence of veg species along 10 points on a transect from upland to coast
                 ScientificName, contains("X"))%>%
   ## Fix Formatting: 
   # Aggregate categories for species names
-  mutate(ScientificName=case_when(grepl("stichlis",ScientificName,)~"distichlis",
-                           grepl("atens",ScientificName)~"patens",
-                           grepl("lterniflora-tall",ScientificName)~"alt_tall",
-                           grepl("lterniflora-short",ScientificName)~"alt_short",
-                           grepl("ragmites",ScientificName)~"phrag",
-                           grepl("gerardii",ScientificName)~"gerardii",
-                           grepl("lterniflora",ScientificName)&!grepl("lterniflora-tall|lterniflora-short",ScientificName)~"alt",
-                           grepl("Conifer|Juniperus|Prunus|Pinus|Quercus|Acer|Ailanthus",ScientificName)&ScientificName!="Angiosperm/Conifer shrub" ~"trees",
-                           grepl("shrub|Bocconia|Baccharis|Iva|Morella|Myrica|Elaeagnus umbellata",ScientificName)~"shrubs", #Elaeagnus umbellata is invasive
-                           grepl("Bare Ground|Rock",ScientificName)&ScientificName!="Bare Ground (road/pavement)"~"bare",#includes organic matter, sand, mud
-                           grepl("Water|water",ScientificName)&!grepl("ditch/creek|pool/panne",ScientificName)~"open_water", #(impoundment, Lemna is duckweed, usually just in standing water)
-                           grepl("ditch/creek|Channel|pool/panne",ScientificName)~"pannes_channels",
-                           grepl("pavement|Mowed Grass|impoundment",ScientificName)~"modified_habitat", #also ditches and channels?
-                           grepl("Upland",ScientificName)&ScientificName!="Upland (pavement)"~"upland",
-                           grepl("Non-saltmarsh herbaceous spp.|Angiosperm|Unknown",ScientificName)&ScientificName!="Angiosperm/Conifer shrub"~"other_sp",#divide into terrestrial and aquatic species? Celastrus orbiculatus and Lythrum salicaria is invasive
-                           grepl("Pycnanthemum|Lythrum|Hibiscus|Helenium amarum|Lespedeza|Symphyotrichum|Erechtites|Verbena|Glaux|Phytolacca|Pluchea|Argentina|Tripleurospermum|Suaeda|Apocynum cannabinum|Ptilimnium|Triglochin|Atriplex|Toxicodendron|Impatiens|Amaranthus|Sesuvium|Mikania|Celastrus orbiculatus|Lepidium|Aster|Dennstaedtia|Convolvulus|Pluchea|Ambrosia|Achillea|Althaea|Bidens|Eupatorium|Digitaria|Borrichia|Agalinis|Cicuta|Artemisia|Parthenocissus|Calystegia|Cuscuta|Anethum",ScientificName)~ "other_marsh_sp",
-                           grepl("Alisma|latifolia|Sagittaria|Peltandra|Ludwigia|Nuphar|Pontederia|Lemna|Ruppia",ScientificName)~"other_aquatic_sp",
-                           grepl("Lythrum|Rubus|Thinopyrum|Elaeagnus umbellata",ScientificName)~ "invasive", #includes herbaceous, grasses, shrubs
-                           grepl("Juncus",ScientificName)&!grepl("gerardii",ScientificName)~"rushes", #(juncus roemerianus,arcticus littoralis) , exclude gerardii?
-                           grepl("Sedge|Bolboschoenus|Schoenoplectus|Carex|Scirpus|Cyperus|Eleocharis",ScientificName)~"sedges", #(Schoenoplectus pungens,tabernaemontani)
-                           grepl("Poaceae sp.|Leersia|Agrostis|Spartina||Poa sp.|Panicum|Elymus|Festuca|Puccinellia|Ammophila|Zizania|Setaria|Echinochloa|Leptochloa|Hierochloe|Calamagrostis|Alopecurus",ScientificName)&!grepl("atens|lterniflora",ScientificName)~"grasses", #exclude alterniflora and patens
-                           grepl("Spartina",ScientificName)&!grepl("atens|lterniflora",ScientificName)~"cord_grasses", #(pectinata,cynosuroides) exclude alt and patens
-                           grepl("Solidago",ScientificName)~"goldenrods", #(sempervirens)
-                           grepl("Plantago",ScientificName)~"plantains", #(maritima)
-                           grepl("Typha",ScientificName)~"cat_tails", #(angustifolia,latifolia)
-                           grepl("Limonium",ScientificName)~"limonium", #(carolinianum,nashii)
-                           grepl("Polygonum",ScientificName)~"polygonum", #buckwheat and knotgrasses (pensylvanicum,punctatum,perfoliatum)
-                           grepl("Salicornia",ScientificName)~"salicornia", #(depressa,bigelovii)
-                           grepl("Wrack",ScientificName)~"wrack",
-                           grepl("Thatch|Dead",ScientificName)~"thatch",
-                           grepl("Algae|S. distichum|.",ScientificName)~NA))%>%
+  mutate(ScientificName=case_when(grepl("Ailanthus",ScientificName)~"ailanthus_pct",
+                                  grepl("lterniflora-tall",ScientificName)~"alt_tall_pct",
+                                  grepl("lterniflora-short",ScientificName)~"alt_short_pct",
+                                  grepl("lterniflora",ScientificName)&!grepl("lterniflora-tall|lterniflora-short",ScientificName)~"alt_pct",
+                                  grepl("atens",ScientificName)~"patens_pct",
+                                  grepl("Phragmites",ScientificName)~"phrag_pct",
+                                  grepl("stichlis",ScientificName,)~"distichlis_pct",
+                                  grepl("gerardii",ScientificName)~"gerardii_pct",
+                                  grepl("Iva",ScientificName)~"iva_pct",
+                                  grepl("Spartina cynosuroides",ScientificName)~"low_marsh_pct",
+                                  grepl("robustus|Salicornia|americanus|Juncus roemerianus|Limonium|pungens|Glaux|Tripleurospermum|Pluchea|Triglochin",ScientificName)~"high_marsh_pct", #(pectinata,cynosuroides) exclude alt and patens
+                                  grepl("Typha|Spartina pectinata",ScientificName)~"brackish_border_pct", #(angustifolia,latifolia)
+                                  grepl("Panicum virgatum|Atriplex|Solidago|Baccharis",ScientificName)~"saltmarsh_border_pct", #(sempervirens,graminifolia)
+                                  grepl("Non-saltmarsh",ScientificName)~"non-saltmarsh_pct", #(juncus roemerianus,arcticus littoralis) , exclude gerardii?
+                                  grepl("Conifer|Prunus|Pinus|Quercus|Acer|Rhus|Liquidambar|Robinia",ScientificName)&ScientificName!="Angiosperm/Conifer shrub" ~"trees_pct",
+                                  grepl("Water|water|ditch/creek|Channel|pool/panne",ScientificName)~"water_pct", #(impoundment, Lemna is duckweed, usually just in standing water)
+                                  grepl("Upland",ScientificName)~"upland_pct",
+                                  grepl("Bare Ground",ScientificName)~"bare_pct",#includes organic matter, sand, mud
+                                  grepl("Wrack",ScientificName)~"wrack_pct",
+                                  grepl("Thatch",ScientificName)~"thatch_pct"))%>%
   group_by(ScientificName,id,Year,Month,Day,Time,data)%>%
   summarise(across(contains("X"),~ifelse(sum(.x)>0,1,0)))%>%
   ungroup()%>%
@@ -575,7 +565,7 @@ transect_dat4<-transect_dat3%>%
   dis<-distinct(transect_dat4,id,Year,Month,Day,Time)
   for(i in 1:nrow(dis)){
     x <- transect_dat4[(transect_dat4$id==dis[i,]$id)&(transect_dat4$Year==dis[i,]$Year)&
-                         (transect_dat4$Month==dis[i,]$Month)&(transect_dat4$Day==dis[i,]$Day),-c(1:7,29)]
+                         (transect_dat4$Month==dis[i,]$Month)&(transect_dat4$Day==dis[i,]$Day),-c(1:7)]
     div <- diversity(x, MARGIN = 1, index="shannon") #diversity within sites
     Nreg <- colSums(x)
     gamma <- diversity(Nreg, index="shannon")#diversity across sites
@@ -588,16 +578,17 @@ transect_dat5<-transect_dat4%>%
   group_by(id,Year,Month,Day,Time,data)%>%
   
     # count number of points along the transect that each species was found
-  summarise(across(alt:upland,sum),
+  summarise(across(ailanthus_pct:wrack_pct,sum),
             diversity=mean(diversity,na.rm=T))%>%
   ungroup()
     # list the species with the highest count as the dominant species
 transect_dat5$dom_species<-colnames(
-  transect_dat5[,c("alt","alt_short","alt_tall","distichlis","gerardii","patens","other_sp","other_marsh_sp","other_aquatic_sp",
-                "invasive","sedges","grasses","modified_habitat","shrubs","trees","rushes","upland",
-                "phrag","pannes_channels","open_water","bare")]
+  transect_dat5[,c("ailanthus_pct","alt_pct","alt_short_pct","alt_tall_pct","patens_pct","phrag_pct","distichlis_pct","gerardii_pct","iva_pct",
+                   "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
+                   "water_pct","upland_pct","bare_pct","wrack_pct","thatch_pct")]
 )[
-  apply(transect_dat5[,c("alt","alt_short","alt_tall","distichlis","gerardii","patens","other_sp","other_marsh_sp","other_aquatic_sp",
-                   "invasive","sedges","grasses","modified_habitat","shrubs","trees","rushes","upland",
-                   "phrag","pannes_channels","open_water","bare")],1,which.max)
+  apply(transect_dat5[,c("ailanthus_pct","alt_pct","alt_short_pct","alt_tall_pct","patens_pct","phrag_pct","distichlis_pct","gerardii_pct","iva_pct",
+                      "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
+                      "water_pct","upland_pct","bare_pct","wrack_pct","thatch_pct")],1,which.max)
 ]
+
