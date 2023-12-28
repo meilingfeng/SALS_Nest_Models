@@ -110,8 +110,8 @@ var_plots_pres[[i]]<-recordPlot()
 gbm.plot(brt_surv, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T)
 var_plots_pres[[i]]<-recordPlot()
 
-gbm.plot.fits(brt_pres)
-gbm.plot.fits(brt_surv)
+#gbm.plot.fits(brt_pres)
+#gbm.plot.fits(brt_surv)
 
 #Variable contribution/importance
 summary(brt_pres)
