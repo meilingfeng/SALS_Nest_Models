@@ -174,6 +174,25 @@ tideres2<-terra::extract(tideres, vect(st_transform(nests,crs(tideres))), bind=T
 
 
 
+## k. Elevation
+#-------------------------------
+for(i in 1:length(dem)) {
+  #rename raster values
+  layer<-dplyr::rename_with(dem[[i]], function(x){x<-'value'},.cols = everything())
+  
+  #extract the raster cell value at each point (ID represents order of observations in points layer)
+  out_list[[i]]<-terra::extract(layer, vect(st_transform(nests,crs(dem[[1]]))), bind = T)%>%
+    #join additional attributes
+    st_as_sf()%>%
+    st_drop_geometry()%>%
+    filter(!is.na(value))%>%
+    dplyr::select(id,elevation=value)
+}
+
+#empty region dataframes indicate no SALS nests in that region
+#combine NDVI values for nests across all regions into 1 dataframe
+dem2<-do.call("rbind",out_list)
+
 ### join NDVI, PCA, Texture, UVVR, and vegetation classes at each nest into 1 table
 #---------------------------------------------------------------------------------------
 final_dat_local<-left_join(nests,ndvi2, by='id')%>%
@@ -185,6 +204,7 @@ final_dat_local<-left_join(nests,ndvi2, by='id')%>%
   left_join(dplyr::select(veg_prop,-latitude,-longitude,-bp),by='id')%>%
   left_join(precip2,by='id')%>%
   left_join(tideres2,by='id')%>%
+  left_join(dem2,by='id')%>%
   #dplyr::select(id,ndvi,hom_txt,ent_txt,cor_txt)%>%
   distinct(id,.keep_all = T)
 final_dat_local$cor_txt[is.na(final_dat_local$cor_txt)]<-0
