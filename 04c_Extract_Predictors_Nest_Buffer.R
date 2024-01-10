@@ -189,6 +189,26 @@ for(i in 1:length(ndvi)) {
 corr_buff<-do.call("rbind",out_list)%>%
   distinct(id,.keep_all=T)
 
+## i. Elevation
+#-------------------------------
+
+#for each regional zone (1-8) along the east coast...
+for(i in 1:length(dem)) {
+  #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
+  out_list[[i]]<-exact_extract(dem[[i]], st_transform(nests_buff,crs(dem[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+                               summarize_df=T,include_cols='id')%>%
+    #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
+    group_by(id)%>%
+    mutate(n=n/sum(n,na.rm=T),
+           weighted=n*value)%>%
+    summarise(elevation=round(sum(weighted,na.rm=T),digits=5))%>%
+    ungroup()
+}
+
+#empty region dataframes indicate no SALS nests in that region
+#combine values for nests across all regions into 1 dataframe
+dem_buff<-do.call("rbind",out_list)%>%
+  distinct(id,.keep_all=T)
 
 
 
@@ -200,10 +220,11 @@ final_dat<-left_join(veg_prop,uvvr_mean, by='id')%>%
   left_join(pca_buff,by='id')%>%
   left_join(entro_buff,by='id')%>%
   left_join(corr_buff,by='id')%>%
+  left_join(dem_buff,by='id')%>%
   dplyr::select(id,bp,region,site,Year,fate, 
                 HIMARSH,LOMARSH,POOL,PHRG,MISSING,STRM,MUD,UPLND,TERRBRD,
                 uvvr_mean,uvvr_diff,
-                ndvi,pca,ent_txt,cor_txt)%>%
+                ndvi,pca,ent_txt,cor_txt,elevation)%>%
   distinct(id,.keep_all=T)
 
 #save(uvvr_mean,uvvr_diff2,ndvi_buff,pca_buff,entro_buff,corr_buff, file=paste0(path_out,"Final_outputs/4c_final_files.rds"))
