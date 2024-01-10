@@ -11,8 +11,8 @@ library(GLCMTextures)
 
 ## Set up file paths
 # -------------------------------------------
-dat_path<-"D:/Nest_Models/Data/" #input data
-path_out<-"D:/Nest_Models/Outputs/" #outputs
+dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
+path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
 
 
 
@@ -122,7 +122,7 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/Texture/ent_txt_1.tif"))){
       # use equal range method when comparing across several datasets (can set gloabl min and max range using max_val and min_val) - splits data into equal ranges
       # alternative option is "equal prob" which splits by quantiles, used in original paper (Haralick and Shanmugam 1973)
       # NDVI of live plants ranges 0:1, set range and breaks at 0.1 intervals
-  ndvi<-map(unlist(map(paste0(dat_path,"Environmental Predictors/Correll_NAIP"),~list.files(.,pattern = "NDVI.tif$",full.names=T))),rast)
+  ndvi<-map(unlist(map(paste0(dat_path,"Environmental Predictors/Correll_NAIP/NDVI"),~list.files(.,pattern = "NDVI.tif$",full.names=T))),rast)
   txt_entro<-txt_corr<-list()
   
   for (i in 1:length(ndvi)){
@@ -255,4 +255,21 @@ for (i in 1:length(vg_cls)){
 }
 t<-mode_buff(vg_cls[[5]])
 
+## 5. Elevation (USGS 1m DEM rescaled to 3m in Correll et al. 2018)
+#####
+
+if(!file.exists(paste0(path_out,"Intermediate_outputs/Elevation/Z1_DEM_buff.tif"))){
+  # list files
+  dem_list<-unlist(map(paste0(dat_path,"Environmental Predictors/Correll_DEM_RS"),~list.files(.,pattern = "DEMrs.tif$",full.names=T)))
+  
+  #read as raster layers
+  dem<-map(dem_list,rast)
+  
+  # Now run buffer
+  dem_list<-map(dem_list,fine_buff)
+  #write buffer files
+  for(i in 1:length(dem_list)){
+    writeRaster(dem_list[[i]],paste0(path_out,"Intermediate_outputs/Elevation/Z",i,"_DEM_buff.tif"),overwrite=T)
+  }
+}
 
