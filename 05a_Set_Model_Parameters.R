@@ -1,6 +1,5 @@
 library(tidyverse)
 library(sf)
-library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(dismo)
 library(gbm)
@@ -30,18 +29,18 @@ veg_codes<-data.frame(veg_code=c(1:2,4:9),
 ## 3. Load observations with predictors
 # list of predictor surface files for each zone
 load(paste0(path_out,"predictor_files_all_zones_",reso,"m.rds"))
-all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","cor_txt", "tideres", "uvvr_diff") 
+all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH", "tideres", "uvvr_diff","elevation") 
 
-# point predictors
+# point predictors - UVVR, tidal restriction
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
   filter(bp%in%c("p",ab_type))%>%
   mutate(presence=ifelse(bp=="p",1,0))%>%
   left_join(veg_codes,by="veg_class")%>%
   dplyr::select(-pca,-ndvi,-cor_txt,-ent_txt)
 
-# buffered predictors
+# buffered predictors - high marsh proportion, avg texture, ndvi, pca, and elevation
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
-  dplyr::select(id,HIMARSH,ndvi,pca,cor_txt)%>% #remove UPLND
+  dplyr::select(id,HIMARSH,ndvi,pca,elevation)%>% #remove UPLND
   right_join(dat,by="id")%>%
   mutate(veg_code=as.factor(veg_code),
          #create binary variable for if nests intersect High Marsh habitat
@@ -63,7 +62,7 @@ dat[!(dat$id%in%dat_comp$id),]
 # balancing can help machine learning models 
 
 
-## 1. divide observations into nest presence and nest suvival datasets
+## 1. divide observations into nest presence and nest survival datasets
 pres_dat<-dat_comp
 surv_dat<-dat_comp[!is.na(dat_comp$fate),] #filter just the nests with known fates
 
@@ -152,23 +151,18 @@ arrange(n_nest_per_siteyr,desc(n_nests))
 
 # Thin to balance nest failures 
 # create a RasterLayer with the extent of nest locations
-points<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))
-r <- rast(points)
-
-# project to UTM so we can specify resolution in meters
-r<-terra::project(r,"EPSG:26918")
-nests_m<-st_transform(points,"EPSG:26918")
-
+points<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))%>%
+  # project to UTM so we can specify resolution in meters
+  st_transform("EPSG:26918")
 # set the resolution of the cells to 30 m
-res(r) <- 30
-# expand (extend) the extent of the RasterLayer a little
-r <- extend(r, ext(r)+10)
+res<- 30
+r <- rast(extent=ext(points), resolution = res, crs="EPSG:26918")
 
 # thin nest fails down to 1 nest per 30 meters
-fails<-nests_m%>%
+fails<-points%>%
   filter(fate==0)
 
-non_fails<-nests_m%>%
+non_fails<-points%>%
   filter(fate!=0|is.na(fate))
 
 nest_thin <- gridSample(fails, r, n=1)
@@ -178,7 +172,7 @@ fails$Northing = sf::st_coordinates(fails)[,2]
 fails_ss<- filter(fails,(Easting%in%nest_thin[,1]&Northing%in%nest_thin[,2]))%>%
   distinct(geometry,.keep_all = T)
 
-#number of nest records removed N=687
+#number of nest records removed N=562
 nrow(fails)-nrow(fails_ss)
 
 #recombine subset fails and fledges

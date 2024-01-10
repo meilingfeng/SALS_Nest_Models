@@ -125,6 +125,8 @@ txt_corr<-map(unlist(map(paste0(path_out,"Intermediate_outputs/Texture/"),~list.
 txt_entro<-map(unlist(map(paste0(path_out,"Intermediate_outputs/Texture/"),~list.files(.,pattern = "ent.*[0-9]_buff.tif$",full.names=T))),rast)
   
 
-
+## Environmental Predictor 8: Elevation
+file_list3<-unlist(map(paste0(path_out,"Intermediate_outputs/Elevation/"),~list.files(.,pattern = "DEM_buff.tif$",full.names=T)))
+dem<-map(file_list3,rast)
 
 

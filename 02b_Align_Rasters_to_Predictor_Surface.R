@@ -79,14 +79,15 @@ ndvi_list<-unlist(map(paste0(path_out,"Intermediate_outputs/NDVI"),~list.files(.
 # Principal Component of raw NAIP reflection bands (R, G, B)
 pca_list<-unlist(map(paste0(path_out,"Intermediate_outputs/PCA"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
 
-
+# Elevation
+dem_list<-unlist(map(paste0(path_out,"Intermediate_outputs/Elevation"),~list.files(.,pattern = "DEM_buff.tif$",full.names=T)))
 
 
 #combine data that are at the full range extent
 file_list1<-c(uvvr_dif,uvvr_mean,precip,tideres)
 
 #combine data that are at zone extents
-files2<-list(file_list,cor_list,ent_list,ndvi_list,pca_list)
+files2<-list(file_list,cor_list,ent_list,ndvi_list,pca_list,dem_list)
 file_list2<-unlist(lapply(files2,sort))
 
 
@@ -98,23 +99,8 @@ file_list2<-unlist(lapply(files2,sort))
 for(j in 1:length(file_list1)){
   
   input<-file_list1[[j]] # take 1 individual dataset
-
-  # First set the resampling method and make the output data type match the input data type
-  #####
-    #if the data is numeric (decimals), use average resampling
-    #if the data is nominal (classes), use mode resampling
-    # on spat raster data types https://rdrr.io/cran/raster/man/dataType.html 
-  if(grepl("INT",rast(input)@ptr[["dataType"]],fixed=T)){
-    rs_method<-"mode"
-    dat_type<-"UInt16"
-  }
-  if(grepl("FLT",rast(input)@ptr[["dataType"]])){
-    rs_method<-"average"
-    dat_type<-"Float32"
-  }
   
-  
-  # Then align the input data to each of the zone templates
+  # Align the input data to each of the zone templates
   #####
     # for each zone template...
   for(i in 1:length(temps)){
@@ -136,9 +122,9 @@ for(j in 1:length(file_list1)){
            dstfile=output, #aligned output file name
            t_srs=as.character(crs(temps[[i]])), tr=res(temps[[i]]), # aligned coordinate system, aligned resolution
            te=c(xmin(temps[[i]]), ymin(temps[[i]]), xmax(temps[[i]]), ymax(temps[[i]])), #aligned extent
-           r=rs_method, # resampling method ("near"|"bilinear"|"cubic"|"cubicspline"|"lanczos"|"average"|"mode"|"max"|"min"|"med"|"q1"|"q3")
+           r="average", # resampling method ("near"|"bilinear"|"cubic"|"cubicspline"|"lanczos"|"average"|"mode"|"max"|"min"|"med"|"q1"|"q3")
            dstnodata="None", # no data value
-           of='GTiff', ot=dat_type, overwrite=TRUE)# output data type, Byte, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
+           of='GTiff', ot="Float32", overwrite=TRUE)# output data type, Byte, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
     }
   
   }
@@ -152,26 +138,12 @@ for(j in 1:length(file_list1)){
 #---------------------------------------------------------------------------
 
 #define alignment function
-align_z_rast<-function(in_file,temp_list,collapse_string){
+align_z_rast_average<-function(in_file,temp_list,collapse_string){
   
   input<-in_file
   
-  # 1. first set the resampling method and output data type to match the input data
-  #####
-  #if the data is numeric (decimals), use average resampling
-  #if the data is nominal (classes), use mode resampling
-  # on spat raster data types https://rdrr.io/cran/raster/man/dataType.html 
-  if(grepl("INT",rast(input)@ptr[["dataType"]],fixed=T)){
-    rs_method<-"mode"
-    dat_type<-"UInt16"
-  }
-  if(grepl("FLT",rast(input)@ptr[["dataType"]])){
-    rs_method<-"average"
-    dat_type<-"Float32"
-  }
   
-  
-  # 2. Then align the input data to each of the zone templates
+  # Align the input data to each of the zone templates
   #####
     
     #create output file name
@@ -191,21 +163,53 @@ align_z_rast<-function(in_file,temp_list,collapse_string){
                dstfile=output, #aligned output file name
                t_srs=as.character(crs(temp_list)), tr=res(temp_list), # aligned coordinate system, aligned resolution
                te=c(xmin(temp_list), ymin(temp_list), xmax(temp_list), ymax(temp_list)), #aligned extent
-               r=rs_method, # resampling method ("near"|"bilinear"|"cubic"|"cubicspline"|"lanczos"|"average"|"mode"|"max"|"min"|"med"|"q1"|"q3")
+               r="average", # resampling method ("near"|"bilinear"|"cubic"|"cubicspline"|"lanczos"|"average"|"mode"|"max"|"min"|"med"|"q1"|"q3")
                dstnodata="None", # no data value
-               of='GTiff', ot=dat_type, overwrite=TRUE)# output data type, Byte, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
+               of='GTiff', ot="Float32", overwrite=TRUE)# output data type, Byte, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
     }
     
 }
 
-
+#mode version for the vegetation classes
+align_z_rast_mode<-function(in_file,temp_list,collapse_string){
+  
+  input<-in_file
+  
+  
+  # Align the input data to each of the zone templates
+  #####
+  
+  #create output file name
+  output<-paste(substring(input, 
+                          #take the spot just before .tif in the file name
+                          c(1,nchar(input)-3), 
+                          c(nchar(input)-4,nchar(input))), 
+                # and add in the aligned resolution and zone to the output name
+                collapse=collapse_string)
+  
+  
+  #if the file has not been already aligned, align it
+  if (!file.exists(output)) {
+    
+    
+    gdalwarp(srcfile=input, # original file name
+             dstfile=output, #aligned output file name
+             t_srs=as.character(crs(temp_list)), tr=res(temp_list), # aligned coordinate system, aligned resolution
+             te=c(xmin(temp_list), ymin(temp_list), xmax(temp_list), ymax(temp_list)), #aligned extent
+             r="mode", # resampling method ("near"|"bilinear"|"cubic"|"cubicspline"|"lanczos"|"average"|"mode"|"max"|"min"|"med"|"q1"|"q3")
+             dstnodata="None", # no data value
+             of='GTiff', ot="Int8", overwrite=TRUE)# output data type, Byte, Int8, UInt16, Int16, UInt32, Int32, UInt64, Int64, Float32, Float64, CInt16, CInt32, CFloat32 or CFloat64
+  }
+  
+}
 
 
 #create a repeating list of templates for each dataset
-temp_order<-rep(temps,times = length(files2))
+temp_order<-rep(temps,times = length(files2)-1)
 
 #apply the raster alignment function to each dataset and template zone pair
-mapply(align_z_rast,file_list2,temp_order,collapse_string=paste0("_",reso,"align"))
+mapply(align_z_rast_average,file_list2[-c(1:8)],temp_order,collapse_string=paste0("_",reso,"align"))
+mapply(align_z_rast_mode,file_list2[c(1:8)],temps,collapse_string=paste0("_",reso,"align"))
 
 
 
@@ -258,7 +262,7 @@ hi_files[[i]]<-paste0(path_out,"Intermediate_outputs/HIMARSH/Z",i,"_himarsh_",re
 
 #then align these to the templates
 #apply the raster alignment to each dataset zone and template zone pair
-mapply(align_z_rast,hi_files,temps,"align")
+mapply(align_z_rast_average,hi_files,temps,"align")
 
 
 

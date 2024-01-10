@@ -347,7 +347,7 @@ p5<-ggerrorplot(var_p, x = "var", y = "importance",
                 desc_stat = "mean_sd", color = "black",
                 add = "jitter", add.params = list(color = "darkgray"))+
   coord_flip()+
-  labs(y="",x="",title="Nest Presence BRTs")
+  labs(y="",x="",title="Nesting Activity")
 
 
 var_s<-left_join(contrib_surv[[1]],contrib_surv[[2]],by="var")%>%
@@ -360,7 +360,7 @@ p6<-ggerrorplot(var_s, x = "var", y = "importance",
                 desc_stat = "mean_sd", color = "black",
                 add = "jitter", add.params = list(color = "darkgray"))+
   coord_flip()+
-  labs(y="Variable Importance",x="",title="Nest Survival BRTs")
+  labs(y="Variable Importance",x="",title="Nesting Success")
 
 (p5/p6)+plot_annotation(tag_levels = "A")
 
