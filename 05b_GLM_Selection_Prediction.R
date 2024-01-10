@@ -9,121 +9,80 @@ if(!exists("pres_dat")){
 }
 
 
+
 ## 1. Select model 
 #------------------------------------------
 
 
 ## Start a list of potential models
-# A. Habitat characteristics not captured by High Marsh
-
-# compare a model using just proportion of high marsh to models just using NDVI, Entropy, UVVR
-# compare models using additive combinations of each: highmarsh+NDVI. Highmarsh+UVVR. Highmarsh+PC, 
-# Compare model using combinations of non-highmarsh: NDVI+UVVR, NDVI+PCA, PCA+UVVR, PCA+UVVR+NDVI
 mod_list_pres1<-list()
 mod_list_surv1<-list()
 
-
-
-# How much variation does each variable explain relative to each other?
-# NDVI
-mod_list_pres1[[1]]<-glm(y~ndvi, 
+# Do high marsh characteristics best describe nest habitat?
+  ## compare a model using just proportion of high marsh + latitude
+mod_list_pres1[[1]]<-glm(y~HIMARSH+latitude, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv1[[1]]<-glm(y~ndvi, 
+mod_list_surv1[[1]]<-glm(y~HIMARSH+latitude, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
-# PCA
-mod_list_pres1[[2]]<-glm(y~pca, 
+  ## compare a model using non-high marsh variables + latitude
+mod_list_pres1[[2]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+tideres+elevation+latitude, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv1[[2]]<-glm(y~pca, 
-                        data=surv_dat,
-                        family = binomial(link="logit"))
-# UVVR
-mod_list_pres1[[3]]<-glm(y~uvvr_mean, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[3]]<-glm(y~uvvr_mean, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-mod_list_pres1[[4]]<-glm(y~uvvr_diff, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[4]]<-glm(y~uvvr_diff, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-# texture
-mod_list_pres1[[5]]<-glm(y~cor_txt, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[5]]<-glm(y~cor_txt, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-# tide restriction
-mod_list_pres1[[6]]<-glm(y~tideres, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[6]]<-glm(y~tideres, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-# HIGH MARSH
-mod_list_pres1[[7]]<-glm(y~HIMARSH, 
-                        data=pres_dat,
-                        family = binomial(link="logit"))
-mod_list_surv1[[7]]<-glm(y~HIMARSH, 
+mod_list_surv1[[2]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+tideres+elevation+latitude, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
-#Does adding NDVI or UVVR or PCA improve high marsh?
-# HIGH MARSH +NDVI
-mod_list_pres1[[8]]<-glm(y~HIMARSH+ndvi, 
+  ## compare a model using high marsh and additional variables +latitude (this is the global model)
+mod_list_pres1[[3]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+tideres+elevation+HIMARSH+latitude, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[8]]<-glm(y~HIMARSH+ndvi, 
+mod_list_surv1[[3]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+tideres+elevation+HIMARSH+latitude, 
                          data=surv_dat,
                          family = binomial(link="logit"))
-# HIGH MARSH + UVVR
-mod_list_pres1[[9]]<-glm(y~HIMARSH+uvvr_mean, 
-                          data=pres_dat,
-                          family = binomial(link="logit"))
-mod_list_surv1[[9]]<-glm(y~HIMARSH+uvvr_mean, 
-                          data=surv_dat,
-                          family = binomial(link="logit"))
-mod_list_pres1[[10]]<-glm(y~HIMARSH+uvvr_diff, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[10]]<-glm(y~HIMARSH+uvvr_diff, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-# HIGH MARSH + PCA
-mod_list_pres1[[11]]<-glm(y~HIMARSH+pca, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[11]]<-glm(y~HIMARSH+pca, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-# HIGH MARSH + texture
-mod_list_pres1[[12]]<-glm(y~HIMARSH+cor_txt, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv1[[12]]<-glm(y~HIMARSH+cor_txt, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-#HIGH MARSH + TIDE RESTRICTIONS
-mod_list_pres1[[13]]<-glm(y~HIMARSH+tideres, 
-                          data=pres_dat,
-                          family = binomial(link="logit"))
-mod_list_surv1[[13]]<-glm(y~HIMARSH+tideres, 
-                          data=surv_dat,
-                          family = binomial(link="logit"))
 
-# ALL
-mod_list_pres1[[14]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+cor_txt+tideres+HIMARSH, 
+# Are there important nesting habitat characteristics that we haven't classified?
+  ## compare a model using just pca of raw reflectance + latitude
+mod_list_pres1[[4]]<-glm(y~pca+latitude, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv1[[14]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+cor_txt+tideres+HIMARSH,
+mod_list_surv1[[4]]<-glm(y~pca+latitude, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+
+# Does vegetation have better precision of local hydrology than USGS elevation data? - expect elevation to be more important north (Ruskin)
+  ## compare a model using just elevation with one using UVVR, NDVI, cor_txt, high marsh
+mod_list_pres1[[5]]<-glm(y~elevation+latitude, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[5]]<-glm(y~elevation+latitude, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+
+mod_list_pres1[[6]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+HIMARSH+latitude, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[6]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+HIMARSH+latitude, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+
+
+# Does nest habitat quality vary within high marsh?
+  # compare high marsh*ndvi and high marsh*pca with the high marsh only model
+mod_list_pres1[[7]]<-glm(y~HIMARSH*pca+latitude, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[7]]<-glm(y~HIMARSH*pca+latitude, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
+
+
+mod_list_pres1[[8]]<-glm(y~HIMARSH*ndvi+latitude, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv1[[8]]<-glm(y~HIMARSH*ndvi+latitude, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
@@ -131,204 +90,85 @@ mod_list_surv1[[14]]<-glm(y~ndvi+uvvr_mean+uvvr_diff+pca+cor_txt+tideres+HIMARSH
 
 # store model selection factors in a table
 mod_tab_habstr<-data.frame(Response=rep(c("Presence","Success"),length(mod_list_pres1)),
-                           Model_Comparison=rep("Additional Habitat Characteristics",2*length(mod_list_pres1)),
                            Model_Name=rep(NA,2*length(mod_list_pres1)),
                            Function=rep(NA,2*length(mod_list_pres1)),
                            AIC=rep(NA,2*length(mod_list_pres1)),
                            dAIC=rep(NA,2*length(mod_list_pres1)))
 
-mod_tab_habstr[1,"Model_Name"]<-"Vegetation Health (NDVI)"
+mod_tab_habstr[1,"Model_Name"]<-"High Marsh Habitat"
 mod_tab_habstr[1,"Function"]<-deparse1(mod_list_pres1[[1]]$formula)
 mod_tab_habstr[1,"AIC"]<-mod_list_pres1[[1]]$aic
 
-mod_tab_habstr[2,"Model_Name"]<-"Vegetation Health (NDVI)"
+mod_tab_habstr[2,"Model_Name"]<-"High Marsh Habitat"
 mod_tab_habstr[2,"Function"]<-deparse1(mod_list_surv1[[1]]$formula)
 mod_tab_habstr[2,"AIC"]<-mod_list_surv1[[1]]$aic
 
-mod_tab_habstr[3,"Model_Name"]<-"Raw Reflectance (PCA)"
+mod_tab_habstr[3,"Model_Name"]<-"Additional Habitat Features"
 mod_tab_habstr[3,"Function"]<-deparse1(mod_list_pres1[[2]]$formula)
 mod_tab_habstr[3,"AIC"]<-mod_list_pres1[[2]]$aic
 
-mod_tab_habstr[4,"Model_Name"]<-"Raw Reflectance (PCA)"
+mod_tab_habstr[4,"Model_Name"]<-"Additional Habitat Features"
 mod_tab_habstr[4,"Function"]<-deparse1(mod_list_surv1[[2]]$formula)
 mod_tab_habstr[4,"AIC"]<-mod_list_surv1[[2]]$aic
 
-mod_tab_habstr[5,"Model_Name"]<-"Mean Marsh Resilience (UVVR)"
+mod_tab_habstr[5,"Model_Name"]<-"High Marsh + Additional Habitat Features"
 mod_tab_habstr[5,"Function"]<-deparse1(mod_list_pres1[[3]]$formula)
 mod_tab_habstr[5,"AIC"]<-mod_list_pres1[[3]]$aic
 
-mod_tab_habstr[6,"Model_Name"]<-"Mean Marsh Resilience (UVVR)"
+mod_tab_habstr[6,"Model_Name"]<-"High Marsh + Additional Habitat Features"
 mod_tab_habstr[6,"Function"]<-deparse1(mod_list_surv1[[3]]$formula)
 mod_tab_habstr[6,"AIC"]<-mod_list_surv1[[3]]$aic
 
-mod_tab_habstr[7,"Model_Name"]<-"Marsh Resilience Change (UVVR)"
+mod_tab_habstr[7,"Model_Name"]<-"Unclassified Habitat Features"
 mod_tab_habstr[7,"Function"]<-deparse1(mod_list_pres1[[4]]$formula)
 mod_tab_habstr[7,"AIC"]<-mod_list_pres1[[4]]$aic
 
-mod_tab_habstr[8,"Model_Name"]<-"Marsh Resilience Change (UVVR)"
+mod_tab_habstr[8,"Model_Name"]<-"Unclassified Habitat Features"
 mod_tab_habstr[8,"Function"]<-deparse1(mod_list_surv1[[4]]$formula)
 mod_tab_habstr[8,"AIC"]<-mod_list_surv1[[4]]$aic
 
-mod_tab_habstr[9,"Model_Name"]<-"Texture (Simiarlity)"
+mod_tab_habstr[9,"Model_Name"]<-"Elevation"
 mod_tab_habstr[9,"Function"]<-deparse1(mod_list_pres1[[5]]$formula)
 mod_tab_habstr[9,"AIC"]<-mod_list_pres1[[5]]$aic
 
-mod_tab_habstr[10,"Model_Name"]<-"Texture (Similarity)"
+mod_tab_habstr[10,"Model_Name"]<-"Elevation"
 mod_tab_habstr[10,"Function"]<-deparse1(mod_list_surv1[[5]]$formula)
 mod_tab_habstr[10,"AIC"]<-mod_list_surv1[[5]]$aic
 
-mod_tab_habstr[11,"Model_Name"]<-"Tidal Restrictions"
+mod_tab_habstr[11,"Model_Name"]<-"Vegetation Features"
 mod_tab_habstr[11,"Function"]<-deparse1(mod_list_pres1[[6]]$formula)
 mod_tab_habstr[11,"AIC"]<-mod_list_pres1[[6]]$aic
 
-mod_tab_habstr[12,"Model_Name"]<-"Tidal Restrictions"
+mod_tab_habstr[12,"Model_Name"]<-"Vegetation Features"
 mod_tab_habstr[12,"Function"]<-deparse1(mod_list_surv1[[6]]$formula)
 mod_tab_habstr[12,"AIC"]<-mod_list_surv1[[6]]$aic
 
-mod_tab_habstr[13,"Model_Name"]<-"High Marsh"
+mod_tab_habstr[13,"Model_Name"]<-"High Marsh Quality: Reflectance"
 mod_tab_habstr[13,"Function"]<-deparse1(mod_list_pres1[[7]]$formula)
 mod_tab_habstr[13,"AIC"]<-mod_list_pres1[[7]]$aic
 
-mod_tab_habstr[14,"Model_Name"]<-"High Marsh"
+mod_tab_habstr[14,"Model_Name"]<-"High Marsh Quality: Reflectance"
 mod_tab_habstr[14,"Function"]<-deparse1(mod_list_surv1[[7]]$formula)
 mod_tab_habstr[14,"AIC"]<-mod_list_surv1[[7]]$aic
 
-mod_tab_habstr[15,"Model_Name"]<-"High Marsh + NDVI"
+mod_tab_habstr[15,"Model_Name"]<-"High Marsh Quality: NDVI"
 mod_tab_habstr[15,"Function"]<-deparse1(mod_list_pres1[[8]]$formula)
 mod_tab_habstr[15,"AIC"]<-mod_list_pres1[[8]]$aic
 
-mod_tab_habstr[16,"Model_Name"]<-"High Marsh + NDVI"
+mod_tab_habstr[16,"Model_Name"]<-"High Marsh Quality: NDVI"
 mod_tab_habstr[16,"Function"]<-deparse1(mod_list_surv1[[8]]$formula)
 mod_tab_habstr[16,"AIC"]<-mod_list_surv1[[8]]$aic
 
-mod_tab_habstr[17,"Model_Name"]<-"High Marsh + Mean UVVR"
-mod_tab_habstr[17,"Function"]<-deparse1(mod_list_pres1[[9]]$formula)
-mod_tab_habstr[17,"AIC"]<-mod_list_pres1[[9]]$aic
 
-mod_tab_habstr[18,"Model_Name"]<-"High Marsh + Mean UVVR"
-mod_tab_habstr[18,"Function"]<-deparse1(mod_list_surv1[[9]]$formula)
-mod_tab_habstr[18,"AIC"]<-mod_list_surv1[[9]]$aic
-
-mod_tab_habstr[19,"Model_Name"]<-"High Marsh + UVVR Change"
-mod_tab_habstr[19,"Function"]<-deparse1(mod_list_pres1[[10]]$formula)
-mod_tab_habstr[19,"AIC"]<-mod_list_pres1[[10]]$aic
-
-mod_tab_habstr[20,"Model_Name"]<-"High Marsh + UVVR Change"
-mod_tab_habstr[20,"Function"]<-deparse1(mod_list_surv1[[10]]$formula)
-mod_tab_habstr[20,"AIC"]<-mod_list_surv1[[10]]$aic
-
-mod_tab_habstr[21,"Model_Name"]<-"High Marsh + PCA"
-mod_tab_habstr[21,"Function"]<-deparse1(mod_list_pres1[[11]]$formula)
-mod_tab_habstr[21,"AIC"]<-mod_list_pres1[[11]]$aic
-
-mod_tab_habstr[22,"Model_Name"]<-"High Marsh + PCA"
-mod_tab_habstr[22,"Function"]<-deparse1(mod_list_surv1[[11]]$formula)
-mod_tab_habstr[22,"AIC"]<-mod_list_surv1[[11]]$aic
-
-mod_tab_habstr[23,"Model_Name"]<-"High Marsh + Texture (Similarity)"
-mod_tab_habstr[23,"Function"]<-deparse1(mod_list_pres1[[12]]$formula)
-mod_tab_habstr[23,"AIC"]<-mod_list_pres1[[12]]$aic
-
-mod_tab_habstr[24,"Model_Name"]<-"High Marsh + Texture (Similarity)"
-mod_tab_habstr[24,"Function"]<-deparse1(mod_list_surv1[[12]]$formula)
-mod_tab_habstr[24,"AIC"]<-mod_list_surv1[[12]]$aic
-
-mod_tab_habstr[25,"Model_Name"]<-"High Marsh + Tidal Restrictions"
-mod_tab_habstr[25,"Function"]<-deparse1(mod_list_pres1[[13]]$formula)
-mod_tab_habstr[25,"AIC"]<-mod_list_pres1[[13]]$aic
-
-mod_tab_habstr[26,"Model_Name"]<-"High Marsh + Tidal Restrictions"
-mod_tab_habstr[26,"Function"]<-deparse1(mod_list_surv1[[13]]$formula)
-mod_tab_habstr[26,"AIC"]<-mod_list_surv1[[13]]$aic
-
-mod_tab_habstr[27,"Model_Name"]<-"Full Additional Habitat"
-mod_tab_habstr[27,"Function"]<-deparse1(mod_list_pres1[[14]]$formula)
-mod_tab_habstr[27,"AIC"]<-mod_list_pres1[[14]]$aic
-
-mod_tab_habstr[28,"Model_Name"]<-"Full Additional Habitat"
-mod_tab_habstr[28,"Function"]<-deparse1(mod_list_surv1[[14]]$formula)
-mod_tab_habstr[28,"AIC"]<-mod_list_surv1[[14]]$aic
-
-
-mod_tab_habstr<-group_by(mod_tab_habstr,Response)%>%mutate(dAIC=AIC-min(AIC))%>%
+mod_tab<-group_by(mod_tab_habstr,Response)%>%mutate(ΔAIC=AIC-min(AIC))%>%
   ungroup()%>%
-  arrange(Response,Model_Comparison,dAIC)
+  arrange(Response,ΔAIC)
 
 
 
 
-
-# B. Quality within high marsh (interactions) - sparrow presence does not mean nest presence
-  # within high marsh habitat, certain habitat qualities are more suitable for nesting
-  # eg healthier vegetation (NDVI) grows taller and denser
-  # compare highmarsh only, ndvi only, highmarsh + ndvi to high marsh*ndvi
-mod_list_pres2<-list()
-mod_list_surv2<-list()
-
-#do the interaction models do better than the additive models?
-
-
-# high marsh and PC reflect
-mod_list_pres2[[1]]<-glm(y~HIMARSH*pca, 
-                        data=pres_dat,
-                        family = binomial(link="logit"))
-mod_list_surv2[[1]]<-glm(y~HIMARSH*ndvi, 
-                        data=surv_dat,
-                        family = binomial(link="logit"))
-
-
-#Do adding the interactions improve all habitat models?
-mod_list_pres2[[2]]<-glm(y~uvvr_mean+uvvr_diff+cor_txt+tideres+ndvi+HIMARSH*pca, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv2[[2]]<-glm(y~uvvr_mean+uvvr_diff+cor_txt+tideres+pca+HIMARSH*ndvi,
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-
-# store model selection factors in a table
-mod_tab_int<-data.frame(Response=rep(c("Presence","Success"),length(mod_list_pres2)),
-                           Model_Comparison=rep("High Marsh Quality",2*length(mod_list_pres2)),
-                           Model_Name=rep(NA,2*length(mod_list_pres2)),
-                           Function=rep(NA,2*length(mod_list_pres2)),
-                           AIC=rep(NA,2*length(mod_list_pres2)),
-                           dAIC=rep(NA,2*length(mod_list_pres2)))
-
-mod_tab_int[1,"Model_Name"]<-"High Marsh * Raw Reflectance"
-mod_tab_int[1,"Function"]<-deparse1(mod_list_pres2[[1]]$formula)
-mod_tab_int[1,"AIC"]<-mod_list_pres2[[1]]$aic
-
-mod_tab_int[2,"Model_Name"]<-"High Marsh * NDVI"
-mod_tab_int[2,"Function"]<-deparse1(mod_list_surv2[[1]]$formula)
-mod_tab_int[2,"AIC"]<-mod_list_surv2[[1]]$aic
-
-mod_tab_int[3,"Model_Name"]<-"All Habitat with Interaction"
-mod_tab_int[3,"Function"]<-deparse1(mod_list_pres2[[2]]$formula)
-mod_tab_int[3,"AIC"]<-mod_list_pres2[[2]]$aic
-
-mod_tab_int[4,"Model_Name"]<-"All Habitat with Interaction"
-mod_tab_int[4,"Function"]<-deparse1(mod_list_surv2[[2]]$formula)
-mod_tab_int[4,"AIC"]<-mod_list_surv2[[2]]$aic
-
-
-mod_tab_int<-group_by(mod_tab_int,Response)%>%mutate(dAIC=AIC-min(AIC))%>%
-  ungroup()%>%
-  arrange(Response,dAIC)
-
-
-
-
-# compare models
-mod_tab<-rbind(mod_tab_habstr,mod_tab_int)%>%
-  group_by(Response)%>%
-  mutate(ΔAIC_within_Model_Comparison=round(dAIC,1),
-         Overall_ΔAIC_across_Comparisons=round(AIC-min(AIC),1))%>%
-  arrange(Response,Model_Comparison,dAIC)%>%
-  ungroup()%>%
-  dplyr::select(-dAIC)
-
-if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"))){
-write.csv(mod_tab%>%dplyr::select(-Function),paste0(path_out,"Final_outputs/Model_Results/model_selection_table_",ab_type,".csv"), row.names = F)
+if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_12_27_23",ab_type,".csv"))){
+write.csv(mod_tab%>%dplyr::select(-Function),paste0(path_out,"Final_outputs/Model_Results/model_selection_table_12_27_23",ab_type,".csv"), row.names = F)
 }
 
 # select the top ranked model based on AIC (any models within 2 delta AIC)
@@ -409,13 +249,27 @@ for (i in 1:length(file_list_all_zones)){
   predictors<-rast(unlist(file_list_all_zones[[i]]))
   
   # b) name layers as their variables (rename veg_code as just Highmarsh since we're only using that one class for now)
-  names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH")
+  names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","elevation","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH")
 
   # c) select just the layers that were used as predictor variables in the model
   mod_preds_p<-predictors[[names(predictors)%in%terms_pres]]
   mod_preds_s<-predictors[[names(predictors)%in%terms_surv]]
   
-  # d) set upland and open water to NA (mask all predictors)
+  # d) create a latitude layer if it was selected in the final model
+  if("latitude"%in%terms_pres){
+    lat<-rast(crs=crs(mod_preds_p[[1]]),extent=ext(mod_preds_p[[1]]),resolution=res(mod_preds_p[[1]]),vals=xyFromCell(terra::project(mod_preds_p[[1]],"EPSG:4617"),1:ncell(mod_preds_p[[1]]))[,2])
+    # add to predictor list
+    mod_preds_p<-rast(list(mod_preds_p,lat))
+    names(mod_preds_p[[nlyr(mod_preds_p)]])<-"latitude"
+  }
+  if("latitude"%in%terms_surv){
+    lat<-rast(crs=crs(mod_preds_s[[1]]),extent=ext(mod_preds_s[[1]]),resolution=res(mod_preds_s[[1]]),vals=xyFromCell(terra::project(mod_preds_s[[1]],"EPSG:4617"),1:ncell(mod_preds_s[[1]]))[,2])
+    # add to predictor list
+    mod_preds_s<-rast(list(mod_preds_s,lat))
+    names(mod_preds_s[[nlyr(mod_preds_s)]])<-"latitude"
+  }
+  
+  # e) set upland and open water to NA (mask all predictors)
   mask<-predictors["Highmarsh"]
   mask[mask==0|mask==9|mask==7]<-NA
   preds_mask_s<-list()

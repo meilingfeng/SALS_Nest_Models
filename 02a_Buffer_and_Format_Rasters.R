@@ -57,7 +57,7 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/UVVR/uvvr_mean_noOutlier.t
   
 }
 
-  # now buffer the NDVI rasters with outliers removed
+  # now buffer the UVVR rasters with outliers removed
 
 if(!file.exists(paste0(path_out,"Intermediate_outputs/UVVR/uvvr_diff_noOutlier_buff.tif"))){
   # create buffer
@@ -273,3 +273,20 @@ if(!file.exists(paste0(path_out,"Intermediate_outputs/Elevation/Z1_DEM_buff.tif"
   }
 }
 
+## 5. Elevation (USGS 1m DEM rescaled to 3m in Correll et al. 2018)
+#####
+
+if(!file.exists(paste0(path_out,"Intermediate_outputs/Elevation/Z1_DEM_buff.tif"))){
+  # list files
+  dem_list<-unlist(map(paste0(dat_path,"Environmental Predictors/Correll_DEM_RS"),~list.files(.,pattern = "DEMrs.tif$",full.names=T)))
+  
+  #read as raster layers
+  dem<-map(dem_list,rast)
+
+  # Now run buffer
+  dem_list<-map(dem_list,fine_buff)
+  #write buffer files
+  for(i in 1:length(dem_list)){
+    writeRaster(dem_list[[i]],paste0(path_out,"Intermediate_outputs/Elevation/Z",i,"_DEM_buff.tif"),overwrite=T)
+  }
+}
