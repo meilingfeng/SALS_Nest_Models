@@ -74,23 +74,39 @@ extent<-extent%>%
 100*(sum(priority$pres_value,na.rm=T)/nrow(priority))#percent of priority marshes with average nesting probability above threshold
 100*(sum(priority$pres_coverage,na.rm=T)/nrow(priority))#percent of priority marshes with more than 50% nesting area
 100*(sum(priority$pres_best,na.rm=T)/nrow(priority))# percent with nesting probability at threshold
+mean(priority$wavg_pres,na.rm=T)#average probability across priority marshes
 
 100*(sum(extent$pres_value,na.rm=T)/nrow(extent))#percent of all marshes with average nesting probability above threshold
 100*(sum(extent$pres_coverage,na.rm=T)/nrow(extent))#percent of all marshes with more than 50% nesting area
 100*(sum(extent$pres_best,na.rm=T)/nrow(extent))# percent with nesting probability at threshold
-
+mean(extent$wavg_pres,na.rm=T)#average probability across all marshes
 
 #total suitable habitat area within priority marshes
-p_area<-sum(priority_sums$area_pred_pres,na.rm=T)
+p_area<-sum(priority_sums$area_pred_pres,na.rm=T)/10000
+#total area of priority marshes
+priority_area<-sum(priority_sums$area_m_pres,na.rm=T)/10000
 #total suitable habitat area
-total_area<-sum(unlist(map(pres_bi,function(x){as.numeric(global(x==1,sum,na.rm=T))})))*900
+total_area<-(sum(unlist(map(pres_bi,function(x){as.numeric(global(x==1,sum,na.rm=T))})))*900)/10000
 #total habitat area outside priority marshes
 op_area<-total_area-p_area
 
-# percent nesting habitat covered by priority areas
-100*(p_area/total_area);p_area/4046.8627
-total_area/4046.8627
+# percent nesting habitat covered by priority areas (hectares)
+100*(p_area/total_area);p_area
+total_area
 
+# percent of priority areas covered by nesting habitat (hectares)
+100*(p_area/priority_area);priority_area
+
+#total predicted nesting habitat
+freq(pres_bi[[1]])
+freq(pres_bi[[2]])
+freq(pres_bi[[3]])
+freq(pres_bi[[4]])
+freq(pres_bi[[5]])
+freq(pres_bi[[6]])
+freq(pres_bi[[7]])
+freq(pres_bi[[8]])
+((49717+6700+29004+23286+65031+6223+6989+6698)*900)/10000
 
 # land ownership within nesting habitat
 pad<-vect("D:/Misc_data/PADUS_Land_Ownership/PADUS3_0Combined_Region1.shp")%>%
