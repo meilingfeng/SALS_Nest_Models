@@ -365,7 +365,7 @@ p6<-ggerrorplot(var_s, x = "var", y = "importance",
 
 (p5/p6)+plot_annotation(tag_levels = "A")
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_",ab_type,"_brt.png"),
+ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_brt.png"),
        width=8,height=8,dpi=300,units = "in")
 
 
