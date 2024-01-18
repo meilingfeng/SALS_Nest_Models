@@ -24,12 +24,6 @@ lr.p<-c()
 lr.s<-c()
 contrib_pres<-list()
 contrib_surv<-list()
-var_plots_pres<-list()
-var_plots_surv<-list()
-int.pres<-list()
-int.surv<-list()
-int.plots.pres<-list()
-int.plots.surv<-list()
 d.pres.brt<-list()
 d.surv.brt<-list()
 
@@ -102,43 +96,17 @@ n.tree.s[i]<-brt_surv$gbm.call$best.trees
 lr.p[i]<-brt_pres$gbm.call$learning.rate
 lr.s[i]<-brt_surv$gbm.call$learning.rate
 
-# 2. plot fitted functions
+# 2. Variable contribution/importance
 #------------------------------------
-#plot fitted values against predictor
-gbm.plot(brt_pres, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T) #, continuous.resolution=100, type="response"
-var_plots_pres[[i]]<-recordPlot()
-gbm.plot(brt_surv, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T)
-var_plots_pres[[i]]<-recordPlot()
 
-#gbm.plot.fits(brt_pres)
-#gbm.plot.fits(brt_surv)
-
-#Variable contribution/importance
 summary(brt_pres)
 summary(brt_surv)
 contrib_pres[[i]]<-brt_pres$contributions
 contrib_surv[[i]]<-brt_surv$contributions
 
 
-#look for interactions (tree complexity)
-find.int.pres <- gbm.interactions(brt_pres)
-find.int.surv <- gbm.interactions(brt_surv)
-  #lists the top interactions and plots them
-  # for presence
-int.pres[[i]]<-find.int.pres$rank.list 
-var1<-find.int.pres$rank.list[1,"var1.index"]
-var2<-find.int.pres$rank.list[1,"var2.index"]
-gbm.perspec(brt_pres, var1, var2) #3d plots the interactions with fitted values
-int.plots.pres[[i]]<-recordPlot()
-  # for survival
-int.surv[[i]]<-find.int.surv$rank.list 
-var1<-find.int.surv$rank.list[1,"var1.index"]
-var2<-find.int.surv$rank.list[1,"var2.index"]
-gbm.perspec(brt_surv, var1, var2)
-int.plots.surv[[i]]<-recordPlot()
-
-
-# predict to testing data
+# 3. predict to testing data
+#--------------------------------------
 preds.pres <- predict.gbm(brt_pres, pres_dat_test,
                      n.trees=brt_pres$gbm.call$best.trees, type="response")
 preds.surv <- predict.gbm(brt_surv, surv_dat_test,
@@ -225,7 +193,7 @@ if(predict.surf==T){
     thr.p.brt<-optimal.thresholds(pres.brt.predict,opt.methods = "MaxSens+Spec")$pred
     thr.s.brt<-optimal.thresholds(surv.brt.predict,opt.methods = "MaxSens+Spec")$pred
     
-    #save(brt_pres,brt_surv,thr.p.brt,thr.s.brt,file=paste0(path_out,"Final_outputs/Nest_Predictions/final_BRT_mods.RDS"))
+    save(brt_pres,brt_surv,thr.p.brt,thr.s.brt,file=paste0(path_out,"Final_outputs/Nest_Predictions/final_BRT_mods.RDS"))
     
     
 if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",1,"_pres_BRTpreds_30m",ab_type,".tif"))){    
@@ -279,65 +247,7 @@ for (i in 1:length(file_list_all_zones)){
   writeRaster(brt_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_pres_BRTpreds_30m",ab_type,".tif"),overwrite=T)
   writeRaster(brt_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/z",i,"_surv_BRTpreds_30m",ab_type,".tif"),overwrite=T)
   
-  
-  # g) Write predicted values to csv
- # if(i!=1){
- # pres_out<-rast(list(preds_mask2,brt_predict_pres[[i]]))
- # names(pres_out[[nlyr(pres_out)]])<-"predictions"
- # surv_out<-rast(list(preds_mask2,brt_predict_surv[[i]]))
- # names(surv_out[[nlyr(surv_out)]])<-"predictions"
-  
-#  mat_p[[i]]<-as.data.frame(terra::as.matrix(pres_out,wide=F))%>%
-#    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-#  mat_s[[i]]<-as.data.frame(terra::as.matrix(surv_out,wide=F))%>%
-#    mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-#  }
-  
-     #zone 1 is too big, process it in parts
-#  if(i==1){
-    
- #   n_div<-5
- #   dat_zone_list<-list()
- #   row_start_p<-c()
- #   row_end_p<-c()
- #   row_start_s<-c()
- #   row_end_s<-c()
-    
- #   pres_out<-rast(list(preds_mask2,brt_predict_pres[[i]]))
- #   names(pres_out[[nlyr(pres_out)]])<-"predictions"
-    
-    
- #   surv_out<-rast(list(preds_mask2,brt_predict_surv[[i]]))
- #   names(surv_out[[nlyr(surv_out)]])<-"predictions"
-    
-    #divide zone into 4
- #   for(j in 1:n_div){
- #     row_start_p[j]<-((round(nrow(pres_out)/n_div))*(j-1))+1
- #     row_end_p[j]<-(round(nrow(pres_out)/n_div))*j
- #     pres_out_sub<-pres_out[c(row_start_p[j]:row_end_p[j]),c(1:ncol(pres_out)),drop=F]
-      
-  #    row_start_s[j]<-((round(nrow(surv_out)/n_div))*(j-1))+1
-  #    row_end_s[j]<-(round(nrow(surv_out)/n_div))*j
-  #    surv_out_sub<-surv_out[c(row_start_s[j]:row_end_s[j]),c(1:ncol(surv_out)),drop=F]
-      
-      #coerce raster stack into a matrix with datasets (layers) as columns and cells as rows (wide = F will do this)
-  #    mat_p_z1[[j]]<-as.data.frame(terra::as.matrix(pres_out_sub,wide=F))%>%
-  #      mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-      
- #     mat_s_z1[[j]]<-as.data.frame(terra::as.matrix(surv_out_sub,wide=F))%>%
- #       mutate(id=paste0(seq(1,nrow(.),1),"z",i))
-  #  }
-    
-    
-    #bind all the zone sections into one dataframe
- #   mat_p[[i]]<-do.call("rbind",mat_p_z1)
-  #  mat_s[[i]]<-do.call("rbind",mat_s_z1)
-  #}
-  
-  
-  #write each zone prediction dataset to matrix file
-#  write.csv(mat_p[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Placement/Z",i,"_BRTprediction_30m_",ab_type,"_placement.csv"),row.names = F)
-#  write.csv(mat_s[[i]],file=paste0(path_out,"/Final_outputs/Nest_Predictions/Success/Z",i,"_BRTprediction_30m_",ab_type,"_success.csv"),row.names = F)
+
 }
 
 }

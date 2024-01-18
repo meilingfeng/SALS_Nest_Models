@@ -44,8 +44,8 @@ states<-us_states%>%filter(REGION=="Norteast")%>%st_transform(crs(pres[[1]]))
 
 
 # site summaries
-priority_sums<-read.csv(paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Priority_Sites_Prediction_Summary.csv"))
-extent_sums<-read.csv(paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Extent_Prediction_Summary.csv"))
+priority_sums<-read.csv(paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Priority_Sites_Prediction_Summary_1_1_24.csv"))
+extent_sums<-read.csv(paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Extent_Prediction_Summary_1_1_24.csv"))
 
   # join to attribute tables
 priority<-left_join(priority,priority_sums,by="id")
