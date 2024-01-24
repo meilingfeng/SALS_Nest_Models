@@ -13,8 +13,8 @@ out_list<-list()
 ### Set up
 # -------------------------------------------
 ## 1. file paths
-dat_path<-"D:/Nest_Models/Data/"
-path_out<-"D:/Nest_Models/Outputs/"
+dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
+path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
 
 ## 2. Load nest prediction rasters
 pres_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Placement"),~list.files(.,pattern = "pres_BRTpreds_30mb.tif$",full.names=T)))

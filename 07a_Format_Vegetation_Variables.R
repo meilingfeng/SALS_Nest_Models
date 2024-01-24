@@ -334,9 +334,8 @@ rapid_dat2<-rapid_dat%>%
                            grepl("robustus|Salicornia|americanus|Juncus roemerianus|Limonium|pungens|Glaux",.x)~"high_marsh_pct", #(pectinata,cynosuroides) exclude alt and patens
                            grepl("Typha augustifolia|Spartina pectinata",.x)~"brackish_border_pct", #(angustifolia,latifolia)
                            grepl("Solidago sempervirens|Baccharis halimifolia|Iva",.x)~"saltmarsh_border_pct", #(sempervirens,graminifolia)
-                           grepl("Conifer",.x)&.x!="Angiosperm/Conifer shrub" ~"trees_pct",
+                           grepl("Conifer|Upland|upland",.x)&.x!="Angiosperm/Conifer shrub" ~"upland_pct",
                            grepl("Water|pool/panne",.x)~"water_pct", #(impoundment, Lemna is duckweed, usually just in standing water)
-                           grepl("Upland",.x)~"upland_pct",
                            grepl("Algae|S. distichum",.x)~NA)))%>%
     # adjust the missing data values for snag count variable
   mutate(DeadSnags=ifelse(DeadSnags%in%c("NULL","-1"),NA,as.numeric(DeadSnags)))
@@ -379,14 +378,14 @@ rapid_dat6<-rapid_dat5%>%
                   PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),
                            ~ifelse(is.na(.x),0,.x)),
          across(c(alt_pct,alt_short_pct,alt_tall_pct,patens_pct,phrag_pct,distichlis_pct,gerardii_pct,
-                  low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,trees_pct,
+                  low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,
                   water_pct,upland_pct),
                 ~ifelse(is.na(.x),0,.x)),
       # mark if all data is missing for the cover class or species sections, this part of the survey was probably not conducted
          CC_available=ifelse(if_all(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
                                  PannesChannelsCC,UplandCC,WrackCC,OpenWaterCC),is.zero),0,1),
          sp_pct_available=ifelse(if_all(c(alt_pct,alt_short_pct,alt_tall_pct,patens_pct,phrag_pct,distichlis_pct,gerardii_pct,
-                                          low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,trees_pct,
+                                          low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,
                                           water_pct,upland_pct),is.zero),0,1)
                 )%>%
   filter(!(CC_available==0&sp_pct_available==0))
@@ -395,7 +394,7 @@ rapid_dat6<-rapid_dat5%>%
   # if species has more than 0%, mark as present with a 1, otherwise 0
 rapid_dat7<-rapid_dat6%>%
   mutate(across(c(alt_pct,alt_short_pct,alt_tall_pct,patens_pct,phrag_pct,distichlis_pct,gerardii_pct,
-                  low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,trees_pct,
+                  low_marsh_pct,high_marsh_pct,brackish_border_pct,saltmarsh_border_pct,
                   water_pct,upland_pct),
                 ~ifelse(.x>0,1,0)),
          across(c(LowMarshCC,HighMarshCC,SaltMarshTBorderCC,BrackishTBorderCC,InvasivesCC, 
@@ -405,11 +404,11 @@ rapid_dat7<-rapid_dat6%>%
   # list the species with the highest percent as the dominant species
 rapid_dat7$dom_species<-colnames(
   rapid_dat7[,c("alt_pct","alt_short_pct","alt_tall_pct","patens_pct","phrag_pct","distichlis_pct","gerardii_pct",
-                "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
+                "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct",
                 "water_pct","upland_pct")]
 )[
   apply(rapid_dat7[,c("alt_pct","alt_short_pct","alt_tall_pct","patens_pct","phrag_pct","distichlis_pct","gerardii_pct",
-                      "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
+                      "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct",
                       "water_pct","upland_pct")],1,which.max)
   ]
     #format the species names by removing the percent column marker
@@ -432,7 +431,7 @@ rapid_dat7<-rapid_dat7%>%
          dom_species=ifelse(sp_pct_available==0,NA,dom_species))
 names(rapid_dat7)
   # adjust the columns markers to presence absence instead of percent
-names(rapid_dat7)[c(19:32)] <- gsub("_pct","_pres",names(rapid_dat7[,c(19:32)]))
+names(rapid_dat7)[c(19:31)] <- gsub("_pct","_pres",names(rapid_dat7[,c(19:31)]))
 names(rapid_dat7)[c(9:17)] <- gsub("CC","CC_pres",names(rapid_dat7[,c(9:17)]))
   # and join the percent and presence variables into one table
 rapid_dat8<-left_join(rapid_dat6,rapid_dat7,by=c("id","year","Date","SHARPTide","Lat","Long","DeadSnags","data","Time","CC_available","sp_pct_available"))
