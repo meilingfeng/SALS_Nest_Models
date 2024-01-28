@@ -96,7 +96,7 @@ for (j in 1:length(file_list_all_zones)){
     predictors<-rast(unlist(file_list_all_zones[[j]]))
     
     # b) name layers as their variables (rename veg_code as just Highmarsh since we're only using that one class for now)
-    names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH")
+    names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH", "LOMARSH")
     
     # c) select just the layers that were used as predictor variables in the model
     mod_preds<-predictors[[names(predictors)%in%c("Highmarsh",all_terms)]]
