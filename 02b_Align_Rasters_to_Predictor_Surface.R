@@ -227,42 +227,48 @@ mapply(align_z_rast_mode,file_list2[c(1:8)],temps,collapse_string=paste0("_",res
 #STREAM=7
 #POOL/PANNE=6
 
-#(focus on HIMARSH for now)
+#focus on HIMARSH and LOMARSH because these habitats are used by most focal tidal marsh bird species. They also reflect the borderline between major flood patterns in the marsh.
 
 hi_files<-list()
+lo_files<-list()
 
-if (!file.exists(paste0(path_out,"Intermediate_outputs/HIMARSH/Z1_himarsh_",reso,".tif"))) {
+if (!file.exists(paste0(path_out,"Intermediate_outputs/LOMARSH/Z1_lomarsh_",reso,".tif"))) {
   
 for(i in 1:length(vg_cls)){
-# distinguish high marsh by setting high marsh values to 1 and all other values to 0
-hi<-vg_cls[[i]]
+# distinguish high/low marsh by setting high/low marsh values to 1 and all other values to 0
+hi<-lo<-vg_cls[[i]]
 hi[hi!=1]<-0
+lo[lo!=2]<-0#first select only low marsh
+lo[lo==2]<-1#then change to 1's for count function below
 
 #count the number of 3x3m cells within each larger raster cell (30x30), using aggregate
-hi<-terra::aggregate(hi,fact=10,fun='sum',dissolve=F)
+hi<-terra::aggregate(hi,fact=10,fun='sum',dissolve=F)#counting 10 cells in each direction (3*10 = 30m)
+lo<-terra::aggregate(lo,fact=10,fun='sum',dissolve=F)
 
-#divide count by 100 to get proportion
+#divide count by 100 (10*10 cells=100 total cells) to get proportion
 hi<-hi/100
+lo<-lo/100
 
 #give the variable a name
 hi<-dplyr::rename_with(hi,function(x){x<-'HIMARSH'},.cols = everything())
+lo<-dplyr::rename_with(lo,function(x){x<-'LOMARSH'},.cols = everything())
 
 #create output file names for the high marsh proportions 
 hi_files[[i]]<-paste0(path_out,"Intermediate_outputs/HIMARSH/Z",i,"_himarsh_",reso,".tif")
 
+lo_files[[i]]<-paste0(path_out,"Intermediate_outputs/LOMARSH/Z",i,"_lomarsh_",reso,".tif")
 #write the new raster with veg class proportions to file
 writeRaster(hi,filename=hi_files[[i]], overwrite=TRUE)
+writeRaster(lo,filename=lo_files[[i]], overwrite=TRUE)
 }
 
 }
 
-for(i in 1:length(vg_cls)){
-hi_files[[i]]<-paste0(path_out,"Intermediate_outputs/HIMARSH/Z",i,"_himarsh_",reso,".tif")
-}
 
 #then align these to the templates
 #apply the raster alignment to each dataset zone and template zone pair
 mapply(align_z_rast_average,hi_files,temps,"align")
+mapply(align_z_rast_average,lo_files,temps,"align")
 
 
 
@@ -273,6 +279,7 @@ mapply(align_z_rast_average,hi_files,temps,"align")
 file_list1_align<-list()
 file_list2_align<-list()
 hi_align<-c()
+lo_align<-c()
 set_t<-c()
 
 # get a list of file names for full extent datasets
@@ -305,7 +312,7 @@ file_list2_align<-unlist(map(file_list2,function(input){
 ))
 
 
-# get high marsh proportion file names
+# get high/low marsh proportion file names
 hi_align<-unlist(map(hi_files,function(input){
   paste(substring(input, 
                        #take the spot just before .tif in the file name
@@ -316,9 +323,19 @@ hi_align<-unlist(map(hi_files,function(input){
 }
 ))
 
+lo_align<-unlist(map(lo_files,function(input){
+  paste(substring(input, 
+                  #take the spot just before .tif in the file name
+                  c(1,nchar(input)-3), 
+                  c(nchar(input)-4,nchar(input))), 
+        # and add in the aligned resolution and zone to the output name
+        collapse="align")
+}
+))
+
 
 # combine the file names of all aligned predictor variables into a list
-all_files<-c(file_list2_align,file_list1_align,hi_align)
+all_files<-c(file_list2_align,file_list1_align,hi_align,lo_align)
 
 
 
