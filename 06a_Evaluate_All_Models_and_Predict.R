@@ -1,6 +1,7 @@
 library(tidyverse)
 library(dismo)
 library(gbm)
+library(ggpubr)
 
 ## Set up 
 #------------------------------------------------------------------
@@ -132,7 +133,7 @@ for (i in 1:length(model.names)){ #for each model
 
 }
 
-write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_",ab_type,".csv"), row.names = F)
+write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_1_28_24.csv"), row.names = F)
 
 # BRT has the best performance across all metrics. 
 # In general worse predictions for survival. 
@@ -364,7 +365,7 @@ p6<-ggerrorplot(var_s, x = "var", y = "importance",
 
 (p5/p6)+plot_annotation(tag_levels = "A")
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_",ab_type,"_brt.png"),
+ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_brt.png"),
        width=8,height=8,dpi=300,units = "in")
 
 

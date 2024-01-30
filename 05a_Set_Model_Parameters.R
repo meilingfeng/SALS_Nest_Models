@@ -29,7 +29,7 @@ veg_codes<-data.frame(veg_code=c(1:2,4:9),
 ## 3. Load observations with predictors
 # list of predictor surface files for each zone
 load(paste0(path_out,"predictor_files_all_zones_",reso,"m.rds"))
-all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH", "tideres", "uvvr_diff","elevation") 
+all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
 # point predictors - UVVR, tidal restriction
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
@@ -40,14 +40,14 @@ dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
 
 # buffered predictors - high marsh proportion, avg texture, ndvi, pca, and elevation
 dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
-  dplyr::select(id,HIMARSH,ndvi,pca,elevation)%>% #remove UPLND
+  dplyr::select(id,HIMARSH,LOMARSH,ndvi,pca,elevation)%>% #remove UPLND
   right_join(dat,by="id")%>%
   mutate(veg_code=as.factor(veg_code),
          #create binary variable for if nests intersect High Marsh habitat
          Highmarsh=as.factor(ifelse(veg_class=="HIMARSH",1,0)))
 
 # fill in 0's for land cover proportions with NAs 
-dat[,c("HIMARSH")]<-dat[,c("HIMARSH")]%>%
+dat[,c("HIMARSH","LOMARSH")]<-dat[,c("HIMARSH","LOMARSH")]%>%
   replace(is.na(.),0)
 
 

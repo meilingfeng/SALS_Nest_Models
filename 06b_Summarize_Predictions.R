@@ -129,12 +129,13 @@ thr.brt<-c(thr.p.brt,thr.s.brt)
 #For both nest presence and nest success...
 for(k in 1:length(preds)){
   pred_type<-preds[[k]]#selects whether to use presence or success predictions
+  thr<-thr.brt[k]
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(pred_type)) {
   #transform probabilities into presence/absence
   temp<-pred_type[[i]]
-  temp[temp>=thr.brt[k]]<-1
-  temp[temp<thr.brt[k]]<-0
+  temp[temp>=thr] <-1
+  temp[temp<thr] <-0
   #summarize the number of cells weighted by proportion of coverage for each probability value within each marsh polygon (coverage fraction)
   priority_list[[i]]<-exact_extract(temp, priority, function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
@@ -159,7 +160,7 @@ for(i in 1:length(pred_type)) {
     dplyr::select(id,area_pred=n,area_m,pct)
   
   #write binary distributions to a raster file
-  #writeRaster(temp,paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_",mark[k],"_BRTbinary_30m_b.tif"),overwrite=T)
+  writeRaster(temp,paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_",mark[k],"_BRTbinary_30m_b.tif"),overwrite=T)
 }
   
   #empty region dataframes indicate no SALS nests in that region
@@ -189,5 +190,5 @@ priority_sum3<-full_join(priority_sum,priority_sum2,by="id")
 extent_sum3<-full_join(extent_sum,extent_sum2,by="id")
 
 #write to file
-write.csv(priority_sum3,paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Priority_Sites_Prediction_Summary.csv"),row.names = F)
-write.csv(extent_sum3,paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Extent_Prediction_Summary.csv"),row.names = F)
+write.csv(priority_sum3,paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Priority_Sites_Prediction_Summary_1_1_24.csv"),row.names = F)
+write.csv(extent_sum3,paste0(path_out,"Final_outputs/Nest_Predictions/SALS_Extent_Prediction_Summary_1_1_24.csv"),row.names = F)
