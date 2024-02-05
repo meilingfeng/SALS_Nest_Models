@@ -209,27 +209,6 @@ for(i in 1:length(dem)) {
 dem_buff<-do.call("rbind",out_list)%>%
   distinct(id,.keep_all=T)
 
-## i. Elevation
-#-------------------------------
-
-#for each regional zone (1-8) along the east coast...
-for(i in 1:length(dem)) {
-  #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(dem[[i]], st_transform(nests_buff,crs(dem[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
-                               summarize_df=T,include_cols='id')%>%
-    #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
-    group_by(id)%>%
-    mutate(n=n/sum(n,na.rm=T),
-           weighted=n*value)%>%
-    summarise(elevation=round(sum(weighted,na.rm=T),digits=5))%>%
-    ungroup()
-}
-
-#empty region dataframes indicate no SALS nests in that region
-#combine values for nests across all regions into 1 dataframe
-dem_buff<-do.call("rbind",out_list)%>%
-  distinct(id,.keep_all=T)
-
 
 ## i. join UVVR and Proportion of vegetation classes in each nest buffer into 1 table
 #-------------------------------

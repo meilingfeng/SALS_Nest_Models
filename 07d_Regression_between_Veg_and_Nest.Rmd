@@ -60,7 +60,7 @@ ggplot(rapid_dat10.high[rapid_dat10.high$year==2022,],aes(y=value,x=variable))+
 ```{r betareg survival}
 
 #summary the global model using all predictor variables (percentage)
-summary(fullmod_survival_pct<-betareg(survival~alt_tall_pct+distichlis_pct+gerardii_pct+patens_pct+alt_short_pct+phrag_pct+low_marsh_pct+high_marsh_pct+brackish_border_pct+saltmarsh_border_pct+upland_pct+water_pct+Lat+I(Lat^2),data=rapid_dat10.model))
+summary(fullmod_survival_pct<-betareg(survival~alt_tall_pct+distichlis_pct+gerardii_pct+patens_pct+alt_short_pct+phrag_pct+low_marsh_pct+high_marsh_pct+brackish_border_pct+saltmarsh_border_pct+upland_pct+trees_pct+water_pct+Lat+I(Lat^2),data=rapid_dat10.model))
 
 #use stepmod function to simplify the global model
 stepmod_survival_pct<-StepBeta(fullmod_survival_pct,k=2)
@@ -69,20 +69,20 @@ summary(stepmod_survival_pct)
 #record the simplified model
 simplified_surv_pct_Lat2<-betareg(survival ~ alt_tall_pct+ distichlis_pct+gerardii_pct +patens_pct + alt_short_pct+ phrag_pct +low_marsh_pct+ high_marsh_pct + brackish_border_pct  + upland_pct + water_pct  + Lat+I(Lat^2), data = rapid_dat10.model )
 #record the simplified model with Lat^2 removed for further comparison
-simplified_surv_pct<-betareg(survival ~ alt_tall_pct+ distichlis_pct+gerardii_pct +patens_pct + alt_short_pct+ phrag_pct +low_marsh_pct+ high_marsh_pct + brackish_border_pct + water_pct  + Lat, data = rapid_dat10.model )
+simplified_surv_pct<-betareg(survival ~ alt_tall_pct+ distichlis_pct+gerardii_pct +patens_pct + alt_short_pct+ phrag_pct +low_marsh_pct+ high_marsh_pct + brackish_border_pct + upland_pct+ water_pct  + Lat, data = rapid_dat10.model )
 ```
 ```{r betareg presence}
 ##summary the global model using all predictor variables (percentage)
-summary(fullmod_pres_pct<-betareg(presence~alt_tall_pct+distichlis_pct+gerardii_pct+patens_pct+alt_short_pct+phrag_pct+low_marsh_pct+high_marsh_pct+brackish_border_pct+saltmarsh_border_pct++water_pct+upland_pct+Lat+I(Lat^2),data=rapid_dat10.model))
+summary(fullmod_pres_pct<-betareg(presence~alt_tall_pct+distichlis_pct+gerardii_pct+patens_pct+alt_short_pct+phrag_pct+low_marsh_pct+high_marsh_pct+brackish_border_pct+saltmarsh_border_pct+trees_pct+water_pct+upland_pct+Lat+I(Lat^2),data=rapid_dat10.model))
 #use stepmod function to simplify the global model
 stepmod_pres_pct<-StepBeta(fullmod_pres_pct,k=2)
 #check the output (saltmarsh_border_pct is not significant)
 stepmod_pres_pct
 
 #record the simplified model
-simplified_pres_pct_Lat2<-betareg(formula =  presence ~  alt_tall_pct + gerardii_pct+patens_pct + alt_short_pct +phrag_pct  + high_marsh_pct +Lat +I(Lat^2),data = rapid_dat10.model)
+simplified_pres_pct_Lat2<-betareg(formula =  presence ~  alt_tall_pct + gerardii_pct+patens_pct + alt_short_pct +phrag_pct  + high_marsh_pct +trees_pct+Lat +I(Lat^2),data = rapid_dat10.model)
 #record the simplified model with Lat^2 removed for further comparison
-simplified_pres_pct<-betareg(formula =  presence ~  alt_tall_pct + gerardii_pct+patens_pct + alt_short_pct +phrag_pct  + high_marsh_pct +Lat,data = rapid_dat10.model)
+simplified_pres_pct<-betareg(formula =  presence ~  alt_tall_pct + gerardii_pct+patens_pct + alt_short_pct +phrag_pct  + high_marsh_pct +trees_pct+Lat,data = rapid_dat10.model)
 
 ```
 ```{r }
@@ -164,32 +164,38 @@ mod_list_pres1[[17]]<-betareg(presence~upland_pres+Lat+I(Lat^2),
 mod_list_pres1[[18]]<-betareg(presence~upland_pct+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
-
-#Water
-mod_list_pres1[[19]]<-betareg(presence~water_pres+Lat+I(Lat^2), 
+#Trees
+mod_list_pres1[[19]]<-betareg(presence~trees_pres+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
-mod_list_pres1[[20]]<-betareg(presence~water_pct+Lat+I(Lat^2), 
+mod_list_pres1[[20]]<-betareg(presence~trees_pct+Lat+I(Lat^2), 
+                          data=rapid_dat10.model
+                          )
+#Water
+mod_list_pres1[[21]]<-betareg(presence~water_pres+Lat+I(Lat^2), 
+                          data=rapid_dat10.model
+                          )
+mod_list_pres1[[22]]<-betareg(presence~water_pct+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
 #LowMarsh
-mod_list_pres1[[21]]<-betareg(presence~low_marsh_pres+Lat+I(Lat^2), 
+mod_list_pres1[[23]]<-betareg(presence~low_marsh_pres+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
-mod_list_pres1[[22]]<-betareg(presence~low_marsh_pct+Lat+I(Lat^2), 
+mod_list_pres1[[24]]<-betareg(presence~low_marsh_pct+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
 #SaltmarshBorder
-mod_list_pres1[[23]]<-betareg(presence~saltmarsh_border_pres+Lat+I(Lat^2), 
+mod_list_pres1[[25]]<-betareg(presence~saltmarsh_border_pres+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
-mod_list_pres1[[24]]<-betareg(presence~saltmarsh_border_pct+Lat+I(Lat^2), 
+mod_list_pres1[[26]]<-betareg(presence~saltmarsh_border_pct+Lat+I(Lat^2), 
                           data=rapid_dat10.model
                           )
 
-mod_list_pres1[[25]]<- simplified_pres_pct
-mod_list_pres1[[26]]<- fullmod_pres_pct
-mod_list_pres1[[27]]<- simplified_pres_pct_Lat2
+mod_list_pres1[[27]]<- simplified_pres_pct
+mod_list_pres1[[28]]<- fullmod_pres_pct
+mod_list_pres1[[29]]<- simplified_pres_pct_Lat2
 
 # store model selection factors in a table
 mod_tab_habstr<-data.frame(Response=rep("Presence",length(mod_list_pres1)),
@@ -271,41 +277,49 @@ mod_tab_habstr[18,"Model_Name"]<-"upland pct"
 mod_tab_habstr[18,"Function"]<-deparse1(mod_list_pres1[[18]]$formula)
 mod_tab_habstr[18,"AIC"]<-AIC(mod_list_pres1[[18]])
 
-mod_tab_habstr[19,"Model_Name"]<-"water pres/abs"
+mod_tab_habstr[19,"Model_Name"]<-"trees pres/abs"
 mod_tab_habstr[19,"Function"]<-deparse1(mod_list_pres1[[19]]$formula)
 mod_tab_habstr[19,"AIC"]<-AIC(mod_list_pres1[[19]])
 
-mod_tab_habstr[20,"Model_Name"]<-"water pct"
+mod_tab_habstr[20,"Model_Name"]<-"trees pct"
 mod_tab_habstr[20,"Function"]<-deparse1(mod_list_pres1[[20]]$formula)
 mod_tab_habstr[20,"AIC"]<-AIC(mod_list_pres1[[20]])
 
-mod_tab_habstr[21,"Model_Name"]<-"low marsh pres/abs"
+mod_tab_habstr[21,"Model_Name"]<-"water pres/abs"
 mod_tab_habstr[21,"Function"]<-deparse1(mod_list_pres1[[21]]$formula)
 mod_tab_habstr[21,"AIC"]<-AIC(mod_list_pres1[[21]])
 
-mod_tab_habstr[22,"Model_Name"]<-"low marsh pct"
+mod_tab_habstr[22,"Model_Name"]<-"water pct"
 mod_tab_habstr[22,"Function"]<-deparse1(mod_list_pres1[[22]]$formula)
 mod_tab_habstr[22,"AIC"]<-AIC(mod_list_pres1[[22]])
 
-mod_tab_habstr[23,"Model_Name"]<-"saltmarsh border pres/abs"
+mod_tab_habstr[23,"Model_Name"]<-"low marsh pres/abs"
 mod_tab_habstr[23,"Function"]<-deparse1(mod_list_pres1[[23]]$formula)
 mod_tab_habstr[23,"AIC"]<-AIC(mod_list_pres1[[23]])
 
-mod_tab_habstr[24,"Model_Name"]<-"saltmarsh border pct"
+mod_tab_habstr[24,"Model_Name"]<-"low marsh pct"
 mod_tab_habstr[24,"Function"]<-deparse1(mod_list_pres1[[24]]$formula)
 mod_tab_habstr[24,"AIC"]<-AIC(mod_list_pres1[[24]])
 
-mod_tab_habstr[25,"Model_Name"]<-"simplified model with only Lat"
+mod_tab_habstr[25,"Model_Name"]<-"saltmarsh border pres/abs"
 mod_tab_habstr[25,"Function"]<-deparse1(mod_list_pres1[[25]]$formula)
 mod_tab_habstr[25,"AIC"]<-AIC(mod_list_pres1[[25]])
 
-mod_tab_habstr[26,"Model_Name"]<-"global model"
+mod_tab_habstr[26,"Model_Name"]<-"saltmarsh border pct"
 mod_tab_habstr[26,"Function"]<-deparse1(mod_list_pres1[[26]]$formula)
 mod_tab_habstr[26,"AIC"]<-AIC(mod_list_pres1[[26]])
 
-mod_tab_habstr[27,"Model_Name"]<-"simplified model with Lat and Lat^2"
+mod_tab_habstr[27,"Model_Name"]<-"simplified model with only Lat"
 mod_tab_habstr[27,"Function"]<-deparse1(mod_list_pres1[[27]]$formula)
 mod_tab_habstr[27,"AIC"]<-AIC(mod_list_pres1[[27]])
+
+mod_tab_habstr[28,"Model_Name"]<-"global model"
+mod_tab_habstr[28,"Function"]<-deparse1(mod_list_pres1[[28]]$formula)
+mod_tab_habstr[28,"AIC"]<-AIC(mod_list_pres1[[28]])
+
+mod_tab_habstr[29,"Model_Name"]<-"simplified model with Lat and Lat^2"
+mod_tab_habstr[29,"Function"]<-deparse1(mod_list_pres1[[29]]$formula)
+mod_tab_habstr[29,"AIC"]<-AIC(mod_list_pres1[[29]])
 mod_tab_habstr<-group_by(mod_tab_habstr,Response)%>%mutate(dAIC=AIC-min(AIC))%>%
   ungroup()%>%
   arrange(Response,Model_Comparison,dAIC)
@@ -417,7 +431,12 @@ mod_list_surv1[[24]]<-betareg(survival~saltmarsh_border_pct+Lat+I(Lat^2),
 mod_list_surv1[[25]]<- simplified_surv_pct
 mod_list_surv1[[26]]<- fullmod_survival_pct
 mod_list_surv1[[27]]<- simplified_surv_pct_Lat2
-
+mod_list_surv1[[28]]<-betareg(survival~trees_pres+Lat+I(Lat^2), 
+                          data=rapid_dat10.model
+                          )
+mod_list_surv1[[29]]<-betareg(survival~trees_pct+Lat+I(Lat^2), 
+                          data=rapid_dat10.model
+                          )
 # store model selection factors in a table
 mod_tab_habstr<-data.frame(Response=rep("survival",length(mod_list_surv1)),
                            Model_Comparison=rep("Veg Species Occurrence",length(mod_list_surv1)),
@@ -534,6 +553,13 @@ mod_tab_habstr[27,"Model_Name"]<-"simplified model with Lat and Lat^2"
 mod_tab_habstr[27,"Function"]<-deparse1(mod_list_surv1[[27]]$formula)
 mod_tab_habstr[27,"AIC"]<-AIC(mod_list_surv1[[27]])
 
+mod_tab_habstr[28,"Model_Name"]<-"trees pres/abs"
+mod_tab_habstr[28,"Function"]<-deparse1(mod_list_surv1[[28]]$formula)
+mod_tab_habstr[28,"AIC"]<-AIC(mod_list_surv1[[28]])
+
+mod_tab_habstr[29,"Model_Name"]<-"trees pct"
+mod_tab_habstr[29,"Function"]<-deparse1(mod_list_surv1[[29]]$formula)
+mod_tab_habstr[29,"AIC"]<-AIC(mod_list_surv1[[29]])
 mod_tab_habstr<-group_by(mod_tab_habstr,Response)%>%mutate(dAIC=AIC-min(AIC))%>%
   ungroup()%>%
   arrange(Response,Model_Comparison,dAIC)

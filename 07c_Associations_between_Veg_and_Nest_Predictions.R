@@ -102,11 +102,11 @@ ggplot(rapid_dat10,aes(y=presence))+
   geom_boxplot(aes(fill=dom_species))
 
 #store presence/absence data for all the groups
-rapid_dat10.pres<-rapid_dat10[,c(1,43:55,60:61)]%>%
+rapid_dat10.pres<-rapid_dat10[,c(1,44:57,62:63)]%>%
   melt(id=c("id","presence","survival"))%>%
   as.data.frame()
 #store precentage data for all the groups
-rapid_dat10.pct<-rapid_dat10[,c(1,19:31,60:61)]%>%
+rapid_dat10.pct<-rapid_dat10[,c(1,19:32,62:63)]%>%
   melt(id=c("id","presence","survival"),na.rm = TRUE)%>%
   as.data.frame()
 rapid_dat10.pct.clean<-rapid_dat10.pct[-which(rapid_dat10.pct$value==0),]
@@ -133,7 +133,7 @@ ggplot(rapid_dat10.pct.clean,aes(x=value,y=survival))+
   facet_wrap(~variable,scales="free")
                           
 # 3. Run a principal components analysis on the percent cover variables                             
-rapid_dat.pca<-rapid_dat10[,c(19:31,60:61)]
+rapid_dat.pca<-rapid_dat10[,c(19:32,62:63)]
 rapid_dat.nor<-scale(rapid_dat.pca)                     
 rapid_dat.corr<-cor(rapid_dat.nor) 
 ggcorrplot(rapid_dat.corr)                         
