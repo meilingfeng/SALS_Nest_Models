@@ -188,7 +188,6 @@ for(i in 1:length(ndvi)) {
 corr_buff<-do.call("rbind",out_list)%>%
   distinct(id,.keep_all=T)
 
-
 ## i. Elevation
 #-------------------------------
 
