@@ -5,6 +5,8 @@ library(stringr)
 library(vegan)
 
 
+
+
 ########################################
 # Format Vegetation Characteristics
 ########################################
@@ -591,4 +593,27 @@ transect_dat5$dom_species<-colnames(
                       "low_marsh_pct","high_marsh_pct","brackish_border_pct","saltmarsh_border_pct","trees_pct",
                       "water_pct","upland_pct","bare_pct","wrack_pct","thatch_pct")],1,which.max)
 ]
+
+
+
+
+## plot the mean vegetation around species nests
+t<-demo_veg%>%
+  mutate(species=str_sub(id,start=5,end=8))%>%
+  group_by(species)%>%
+  summarize(patens_pc=mean(patens_pc,na.rm=T),
+            alt_pc=mean(alt_pc,na.rm=T),
+            dstch_pc=mean(dstch_pc,na.rm=T),
+            jncsg_pc=mean(jncsg_pc,na.rm=T),
+            water_pc=mean(water_pc,na.rm=T),
+            bare_pc=mean(bare_pc,na.rm=T))%>%
+  ungroup()%>%
+  dplyr::filter(species%in%c("SALS","SESP","NESP","CLRA","WILL"))%>%
+  pivot_longer(-1,names_to = "veg.spp",values_to = "pct.cover")
+t$species<-factor(t$species, levels=c("CLRA","SESP","SALS","WILL","NESP"))
+t$veg.spp<-factor(t$veg.spp, levels=c("water_pc","bare_pc","alt_pc",'patens_pc','dstch_pc','jncsg_pc'))
+
+ggplot(t,aes(x=species,y=pct.cover,fill=veg.spp))+
+  geom_bar(stat="identity")+
+  scale_fill_viridis_d()
 
