@@ -21,7 +21,7 @@ path_out<-"D:/Nest_Models/Outputs/"
 ## 1. Format Nest Observations
 # -------------------------------------
 speciesnames<-c("SESP","CLRA","WILL","NESP","HYBR")
-
+species_sum<-as.data.frame(speciesnames)
 # load nest observation shapefile
 nests_all<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
   # remove records missing coordinate information or that have coordinate errors
@@ -46,7 +46,6 @@ for (j in 1:length(speciesnames)){
 
 ## 2. Summary of data availability
 #---------------------------------------------------------
-  species_sum<-as.data.frame(speciesnames)
   species_sum$nest_n[j]<-nrow(nests) 
   species_sum$fate_n[j]<-nrow(nests[!(is.na(nests$fate)),])
   species_sum$site_n[j]<-length(unique(nests_all$site))
