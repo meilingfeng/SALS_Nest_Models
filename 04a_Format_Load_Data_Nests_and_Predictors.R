@@ -130,3 +130,4 @@ file_list3<-unlist(map(paste0(path_out,"Intermediate_outputs/Elevation/"),~list.
 dem<-map(file_list3,rast)
 
 
+

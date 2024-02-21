@@ -20,8 +20,8 @@ library(rnaturalearth)
 
 ## Set file path to data
 # -------------------------------------------
-dat_path<-"D:/Nest_Models/Data/"
-path_out<-"D:/Nest_Models/Outputs/"
+dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
+path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
 
 
 
@@ -538,7 +538,7 @@ output_shp<-dplyr::select(plots3,veg.id,coord.typo)%>%
   left_join(veg,by="veg.id")%>%
   distinct(veg.id,.keep_all = T)
 if(!(file.exists(paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_edit_locations_12_26_22.shp")))){
-st_write(plots2.1,
+st_write(plots3,
          paste0(path_out,"Intermediate_Outputs/Nest Locations/veg_edit_locations_12_26_22.shp"), delete_layer =T)
 }
 

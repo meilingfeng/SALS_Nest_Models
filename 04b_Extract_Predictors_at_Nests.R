@@ -173,6 +173,24 @@ tideres2<-terra::extract(tideres, vect(st_transform(nests,crs(tideres))), bind=T
   dplyr::select(id,tideres)
 
 
+## k. Elevation
+#-------------------------------
+for(i in 1:length(dem)) {
+  #rename raster values
+  layer<-dplyr::rename_with(dem[[i]], function(x){x<-'value'},.cols = everything())
+  
+  #extract the raster cell value at each point (ID represents order of observations in points layer)
+  out_list[[i]]<-terra::extract(layer, vect(st_transform(nests,crs(dem[[1]]))), bind = T)%>%
+    #join additional attributes
+    st_as_sf()%>%
+    st_drop_geometry()%>%
+    filter(!is.na(value))%>%
+    dplyr::select(id,elevation=value)
+}
+
+#empty region dataframes indicate no SALS nests in that region
+#combine NDVI values for nests across all regions into 1 dataframe
+dem2<-do.call("rbind",out_list)
 
 ## k. Elevation
 #-------------------------------
