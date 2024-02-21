@@ -12,7 +12,6 @@ library(spData)
 library(geodata)
 library(rnaturalearth)
 
-# Xuewen
 ########################################################
 # Fix any coordinate issues with the nest locations
 ########################################################
@@ -54,8 +53,7 @@ nests<-read.csv(paste0(dat_path,"Demographic Database/Nests_2001-2020.csv"),na.s
   filter(!is.na(site.code)&!is.na(Year))
   # adjusted "SAlS" to "SALS" for 1 nest id
 
-
-
+nrow(filter(nests,Species=="SALS",Year>=2010))
 
 
 ## 2. Load Site information - compile Site code, site name, and state
@@ -438,8 +436,10 @@ plots<-terra::extract(marsh,vect(plots),bind=T)%>%
 
 
 # QA/QC error flag edits in ArcPro ** find a reproducible way of doing this in R 
+if(!file.exists(paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))){
 st_write(plots,
          paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))
+}
 # (removed error flags around nest points on marsh border and added error flags to nests plotting at the wrong site) 
 error_edits<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/nest_locations_12_9_22.shp"))%>%
   st_drop_geometry()%>%
