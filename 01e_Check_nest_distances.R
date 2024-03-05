@@ -16,11 +16,10 @@ library(terra)#updated version of raster package
 dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
-speciesnames<-c("SESP","CLRA","WILL","NESP","HYBR")
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
 for (j in 1:length(speciesnames)){
- if(!file.exists(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests_2010_2020_dist_err_removed.shp"))){
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests_2010_2020.shp"))%>%
-  rename(id=name)
+if(!file.exists(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests_2010_2020_dist_err_removed.shp"))){
+nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests_2010_2020.shp"))
 
 
 ## 2. Calculate minimum distance between nests within each site

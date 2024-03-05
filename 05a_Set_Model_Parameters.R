@@ -3,7 +3,7 @@ library(sf)
 library(terra)#updated version of raster package
 library(dismo)
 library(gbm)
-source("C:/Users/mefen/OneDrive/Documents/Github/SHARP/Functions/gridSample_sf.R")
+source("C:/Users/10788/Desktop/SaltMarsh/SHARP/Functions/gridSample_sf.R")
 #https://rspatial.org/sdm/1_sdm_introduction.html
 
 ### Set up
@@ -31,17 +31,19 @@ veg_codes<-data.frame(veg_code=c(1:2,4:9),
 load(paste0(path_out,"predictor_files_all_zones_",reso,"m.rds"))
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (j in 1:length(speciesnames)){
 # point predictors - UVVR, tidal restriction
-dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))%>%
+dat1<-read.csv(paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_local.csv"))%>%
   filter(bp%in%c("p",ab_type))%>%
   mutate(presence=ifelse(bp=="p",1,0))%>%
   left_join(veg_codes,by="veg_class")%>%
-  dplyr::select(-pca,-ndvi,-cor_txt,-ent_txt)
+  dplyr::select(-pca,-ndvi,-cor_txt,-ent_txt,-elevation)
 
 # buffered predictors - high marsh proportion, avg texture, ndvi, pca, and elevation
-dat<-read.csv(paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"))%>%
+dat<-read.csv(paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_buff15.csv"))%>%
   dplyr::select(id,HIMARSH,LOMARSH,ndvi,pca,elevation)%>% #remove UPLND
-  right_join(dat,by="id")%>%
+  right_join(dat1,by="id")%>%
   mutate(veg_code=as.factor(veg_code),
          #create binary variable for if nests intersect High Marsh habitat
          Highmarsh=as.factor(ifelse(veg_class=="HIMARSH",1,0)))
@@ -75,9 +77,6 @@ addmargins(table(surv_dat$fate));sum(surv_dat$fate)/nrow(surv_dat)
 
 # prevalence of presence to background
 addmargins(table(pres_dat$presence)); sum(pres_dat$presence)/nrow(pres_dat)
-
-
-
 
 # plot proportion of fledges (nest success) across sites
 success_site<-dat%>%group_by(site)%>%
@@ -151,7 +150,7 @@ arrange(n_nest_per_siteyr,desc(n_nests))
 
 # Thin to balance nest failures 
 # create a RasterLayer with the extent of nest locations
-points<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))%>%
+points<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests_2010_2020_dist_err_removed.shp"))%>%
   # project to UTM so we can specify resolution in meters
   st_transform("EPSG:26918")
 # set the resolution of the cells to 30 m
@@ -276,3 +275,7 @@ surv_dat$y<-surv_dat$fate
 
 table(pres_dat$y)
 table(surv_dat$y)
+write.csv(pres_dat,paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nest_pres_dat.csv"),row.names = F)
+write.csv(surv_dat,paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nest_surv_dat.csv"),row.names = F)
+
+}
