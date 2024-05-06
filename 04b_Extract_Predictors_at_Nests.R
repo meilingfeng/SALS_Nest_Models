@@ -19,11 +19,14 @@ path_out<-"D:/Nest_Models/Outputs/"
 
 
 # Load all nest observations and environmental predictor data
-if(!exists("nests")){
-  source("04a_Format_Load_Data_Nests_and_Predictors.R")
+if(!exists("veg_class")){
+  source("04a_Format_Load_Predictors.R")
 }
 
-
+#load all the species we want to focus on: Saltmarsh sparrow, Seaside sparrow, Clapper Rail, Willet, Nelson's sparrow and potential saltmarsh sparrow hybrids
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (j in 1:length(speciesnames)){
+  nests<-st_read(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_nonbuffed.shp"),stringsAsFactors = FALSE)
 
 ## a. Marsh Vegetation Classes
 #-------------------------------
@@ -192,25 +195,6 @@ for(i in 1:length(dem)) {
 #combine NDVI values for nests across all regions into 1 dataframe
 dem2<-do.call("rbind",out_list)
 
-## k. Elevation
-#-------------------------------
-for(i in 1:length(dem)) {
-  #rename raster values
-  layer<-dplyr::rename_with(dem[[i]], function(x){x<-'value'},.cols = everything())
-  
-  #extract the raster cell value at each point (ID represents order of observations in points layer)
-  out_list[[i]]<-terra::extract(layer, vect(st_transform(nests,crs(dem[[1]]))), bind = T)%>%
-    #join additional attributes
-    st_as_sf()%>%
-    st_drop_geometry()%>%
-    filter(!is.na(value))%>%
-    dplyr::select(id,elevation=value)
-}
-
-#empty region dataframes indicate no SALS nests in that region
-#combine NDVI values for nests across all regions into 1 dataframe
-dem2<-do.call("rbind",out_list)
-
 ### join NDVI, PCA, Texture, UVVR, and vegetation classes at each nest into 1 table
 #---------------------------------------------------------------------------------------
 final_dat_local<-left_join(nests,ndvi2, by='id')%>%
@@ -227,7 +211,6 @@ final_dat_local<-left_join(nests,ndvi2, by='id')%>%
   distinct(id,.keep_all = T)
 final_dat_local$cor_txt[is.na(final_dat_local$cor_txt)]<-0
 
-if(!file.exists(paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"))){
-write.csv(st_drop_geometry(final_dat_local),paste0(path_out,"Final_outputs/SALS_nest_vars_local.csv"),row.names = F)
-}
 
+write.csv(st_drop_geometry(final_dat_local),paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_local.csv"),row.names = F)
+}

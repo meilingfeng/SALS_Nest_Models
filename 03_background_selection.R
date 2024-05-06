@@ -46,10 +46,23 @@ write.csv(st_drop_geometry(veg),paste0(path_out,"Intermediate_outputs/random_veg
 ## 2. Select random background points in each zone
 #----------------------------------------------------------------------------
 # if bg points dont exist, compute. Otherwise load the file.
-if(!file.exists(paste0(path_out,"Intermediate_outputs/background_points_",reso,"m.csv"))){
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (j in 1:length(speciesnames)){
+
+  ## 1. Format Nest Observations
+  # -------------------------------------
+  # load cleaned focal species nest observation shapefile
+  nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests_2010_2020_dist_err_removed.shp"))%>%
+    mutate(bp="p")
+  # output a csv file for nest coordinates and their fate, if recorded
+#  if(!file.exists(paste0(path_out,"Final_outputs/Nest_Coords_fates_",speciesnames[j],"_06_21_23.csv"))){
+    write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fates_",speciesnames[j],"_06_21_23.csv"),row.names=F)
+#  }
   
+ if(!file.exists(paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m.csv"))){
+    
 # a) bring in mask of marsh area for each zone
-load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
+load(paste0(path_out,"/predictor_files_all_zones_30m.rds"))
   masks<-list()
   for(i in 1:length(file_list_all_zones)){
   masks[[i]]<-raster(file_list_all_zones[[i]][[1]])
@@ -110,7 +123,7 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
   for(i in n$Region){
     mask<-masks[[i]]
   # adjustment that accounts for the total non-NA cells to sample from (number of available cells divided by number of needed points)
-    tf<-round(ncell(mask[!is.na(mask)])/n[n$Region==i,]$n)
+    tf<-floor(ncell(mask[!is.na(mask)])/n[n$Region==i,]$n)
   # set seed to assure that the examples will always have the same random sample.
   set.seed(1963)
   bg[[i]] <- as.data.frame(as.matrix(randomPoints(mask=masks[[i]], n[n$Region==i,]$n, prob = T,tryf=tf)))%>% 
@@ -123,20 +136,10 @@ load(paste0(path_out,"/predictor_files_all_zones_",reso,"m.rds"))
 
 #write coordinates to csv
 write.csv(bg_all%>%mutate(Year=NA,site=NA,fate=NA,id=paste0("b",c(1:nrow(.)),"r",region)),
-          paste0(path_out,"Intermediate_outputs/background_points_30m.csv"),row.names=F)
+          paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m.csv"),row.names=F)
+st_write(nests,paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_background_selected.shp"),delete_layer = T)
+
 }
-
-
-
-#load background point coordinates
-bg_all<-read.csv(paste0(path_out,"Intermediate_outputs/background_points_30m.csv"))
-
-#make background points an sf shapefile
-bg_points<-st_as_sf(bg_all,coords=c("x","y"),crs="EPSG:26918")%>%
-  st_transform("EPSG:4269")%>%
-  mutate(longitude=sf::st_coordinates(.)[,1],
-         latitude=sf::st_coordinates(.)[,2])%>%
-  dplyr::select(-region)
-
+}
 
 

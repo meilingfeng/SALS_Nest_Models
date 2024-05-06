@@ -12,57 +12,6 @@ library(terra)#updated version of raster package
 #################################################################################################
 
 
-## Set file path to data and outputs
-# -------------------------------------------
-dat_path<-"D:/Nest_Models/Data/"
-#dat_path<-"/home/FCAM/mlfeng/Data/"
-path_out<-"D:/Nest_Models/Outputs/"
-
-
-
-## 1. Format Nest Observations
-# -------------------------------------
-# load cleaned focal species nest observation shapefile
-
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))%>%
-  mutate(bp="p")%>%
-  dplyr::select(-lat_bin)
-
-# output a csv file for nest coordinates and their fate, if recorded
-if(!file.exists(paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_06_21_23.csv"))){
-write.csv(st_drop_geometry(nests),paste0(path_out,"Final_outputs/Nest_Coords_fates_SALS_06_21_23.csv"),row.names=F)
-}
-
-
-
-
-## 2. Add random veg and background points to nest data
-# --------------------------------------------------------------------------
-#load veg and background points
-source("03_background_selection.R")
-
-# crop to nest extent
-#bg_points2<-st_crop(bg_points,nests)%>%mutate(Region=NA)
-bg_points2<-bg_points# dont need to for bg since we selected only from zones with nests
-veg2<-st_crop(veg,nests)
-
-#make sure columns align
-names(nests)
-names(veg2)
-names(bg_points2)
-
-#add points to nest data
-nests<-rbind(nests,bg_points2,veg2)%>%
-  distinct(.keep_all = TRUE)
-
-#nest and background buffers sf object
-nests_buff<- nests%>%
-  #buffer nest and background points by 15 meters to match largest resolution of environmental data (30m resolution)
-  st_buffer(dist = 15)%>%
-  distinct(.keep_all = TRUE)
-
-
-
 
 ## 3. Load buffered environmental data at their original resolutions (generated in script 02a)
 # --------------------------------------------------------------------------
@@ -123,11 +72,9 @@ tideres<- rast(paste0(path_out,"Intermediate_outputs/Tidal_restriction/tideres_b
 ## Environmental Predictor 7: Texture
 txt_corr<-map(unlist(map(paste0(path_out,"Intermediate_outputs/Texture/"),~list.files(.,pattern = "cor.*[0-9]_buff.tif$",full.names=T))),rast)
 txt_entro<-map(unlist(map(paste0(path_out,"Intermediate_outputs/Texture/"),~list.files(.,pattern = "ent.*[0-9]_buff.tif$",full.names=T))),rast)
-  
+
 
 ## Environmental Predictor 8: Elevation
 file_list3<-unlist(map(paste0(path_out,"Intermediate_outputs/Elevation/"),~list.files(.,pattern = "DEM_buff.tif$",full.names=T)))
 dem<-map(file_list3,rast)
-
-
 
