@@ -2,7 +2,6 @@ library(tidyverse)
 library(terra)
 library(sf)
 
-
 ########
 #sample nest precitions at demo veg sites
 #############
@@ -16,9 +15,12 @@ out_list<-list()
 dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
 path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
 
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (j in 1:length(speciesnames)){
+  
 ## 2. Load nest prediction rasters
-pres_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Placement"),~list.files(.,pattern = "pres_BRTpreds_30mb.tif$",full.names=T)))
-surv_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Success"),~list.files(.,pattern = "surv_BRTpreds_30mb.tif$",full.names=T)))
+pres_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[j]),~list.files(.,pattern = "pres_BRTpreds_30mb.tif$",full.names=T)))
+surv_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[j]),~list.files(.,pattern = "surv_BRTpreds_30mb.tif$",full.names=T)))
 
 #read as raster layers
 pres<-map(pres_list,rast)
@@ -78,8 +80,7 @@ final_dat<-left_join(veg,pres2, by='id')%>%
          Lat = sf::st_coordinates(.)[,2],
          Year=year(mdy(date)))
 
-if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions_at_Veg_Points.csv"))){
-  write.csv(st_drop_geometry(final_dat),paste0(path_out,"Final_outputs/Nest_Predictions_at_Veg_Points.csv"),row.names = F)
+  write.csv(st_drop_geometry(final_dat),paste0(path_out,"Final_outputs/",speciesnames[j],"_Nest_Predictions_at_Veg_Points.csv"),row.names = F)
 }
 
 
