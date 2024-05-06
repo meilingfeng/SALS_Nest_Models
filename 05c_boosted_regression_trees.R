@@ -12,10 +12,11 @@ library(patchwork)
 #--------------------------------------------
 
 #Load and tidy data
-if(!exists("pres_dat")){
-source("05a_Set_Model_Parameters.R")
-}
-
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (s in 1:length(speciesnames)){
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[s],"_nest_pres_dat.csv"))
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[s],"_nest_surv_dat.csv"))
+      
 if(build==T){
 #Create objects to hold BRT parameters for each fold
 n.tree.p<-c()
@@ -33,7 +34,6 @@ pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))
 surv_dat2<-surv_dat%>%dplyr::select("id","y","group",all_of(all_terms))
 
 
-set.seed(123)
 for(i in 1:k){
   #divide into testing and training
   pres_dat_train<-pres_dat2[pres_dat2$group!=i,]%>%dplyr::select(-group,-id)
@@ -77,15 +77,15 @@ if(brt_pres$gbm.call$best.trees<1000){
 brt_surv<-gbm.step(data=surv_dat_train, gbm.x = 2:length(surv_dat_train), gbm.y=1, 
               family = "bernoulli",
               tree.complexity = 5,
-              learning.rate=0.005)
+              learning.rate=0.001)
 
     # start at lr of 0.05, decrease until optimal trees hits 1000
-if(brt_surv$gbm.call$best.trees<1000){
-  brt_surv<-gbm.step(data=surv_dat_train, gbm.x = 2:length(surv_dat_train), gbm.y=1, 
-                     family = "bernoulli",
-                     tree.complexity = 5,
-                     learning.rate=0.001)
-}
+#if(brt_surv$gbm.call$best.trees<1000){
+#  brt_surv<-gbm.step(data=surv_dat_train, gbm.x = 2:length(surv_dat_train), gbm.y=1, 
+ #                    family = "bernoulli",
+#                     tree.complexity = 5,
+#                     learning.rate=0.001)
+#}
 
 
 
@@ -128,6 +128,7 @@ d.surv.brt[[i]] <- data.frame(id=surv_dat2[surv_dat2$group==i,]$id,
 
 
 if(predict.surf==T){
+  if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s],"z",1,"_pres_BRTpreds_30m",ab_type,".tif"))){    
     
     #Final model for nest presence
     set.seed(123)
@@ -137,19 +138,19 @@ if(predict.surf==T){
                        tree.complexity = 5,
                        learning.rate=0.05)# default bag fraction is 0.75
     #start at lr of 0.05, decrease until optimal trees hits 1000
-    if(brt_pres$gbm.call$best.trees<1000){
+    if(brt_pres$gbm.call$best.trees<1000||length(brt_pres)==0){
       brt_pres<-gbm.step(data=pres_dat2[,-1], gbm.x = 2:length(pres_dat2[,-1]), gbm.y=1,
                          family = "bernoulli",
                          tree.complexity = 5,
                          learning.rate=0.01)
     }
-    if(brt_pres$gbm.call$best.trees<1000){
+    if(brt_pres$gbm.call$best.trees<1000||length(brt_pres)==0){
       brt_pres<-gbm.step(data=pres_dat2[,-1], gbm.x = 2:length(pres_dat2[,-1]), gbm.y=1, 
                          family = "bernoulli",
                          tree.complexity = 5,
                          learning.rate=0.005)
     }
-    if(brt_pres$gbm.call$best.trees<1000){
+    if(brt_pres$gbm.call$best.trees<1000||length(brt_pres)==0){
       brt_pres<-gbm.step(data=pres_dat2[,-1], gbm.x = 2:length(pres_dat2[,-1]), gbm.y=1, 
                          family = "bernoulli",
                          tree.complexity = 5,
@@ -166,12 +167,20 @@ if(predict.surf==T){
                        learning.rate=0.005)
     
     # start at lr of 0.05, decrease until optimal trees hits 1000
-    if(brt_surv$gbm.call$best.trees<1000){
+    if(brt_surv$gbm.call$best.trees<1000||length(brt_surv)==0){
       brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
                          family = "bernoulli",
                          tree.complexity = 5,
                          learning.rate=0.001)
     }
+      if(brt_surv$gbm.call$best.trees<1000||length(brt_surv)==0){
+        brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
+                           family = "bernoulli",
+                           tree.complexity = 2,
+                           learning.rate=0.001)
+      }
+
+    
     
 
     
@@ -193,10 +202,9 @@ if(predict.surf==T){
     thr.p.brt<-optimal.thresholds(pres.brt.predict,opt.methods = "MaxSens+Spec")$pred
     thr.s.brt<-optimal.thresholds(surv.brt.predict,opt.methods = "MaxSens+Spec")$pred
     
-    save(brt_pres,brt_surv,thr.p.brt,thr.s.brt,file=paste0(path_out,"Final_outputs/Nest_Predictions/final_BRT_mods.RDS"))
+    save(brt_pres,brt_surv,thr.p.brt,thr.s.brt,file=paste0(path_out,"Final_outputs/Nest_Predictions/",speciesnames[s],"_final_BRT_mods.RDS"))
     
     
-if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",1,"_pres_BRTpreds_30m",ab_type,".tif"))){    
 # predict to spatial surface
 #empty list to hold prediction surfaces
 brt_predict_pres<-list()
@@ -244,11 +252,11 @@ for (i in 1:length(file_list_all_zones)){
 
   
   # f) Write predicted values to rasters
-  writeRaster(brt_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/z",i,"_pres_BRTpreds_30m",ab_type,".tif"),overwrite=T)
-  writeRaster(brt_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/z",i,"_surv_BRTpreds_30m",ab_type,".tif"),overwrite=T)
+  writeRaster(brt_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s],"/",speciesnames[s],"z",i,"_pres_BRTpreds_30m",ab_type,".tif"),overwrite=T)
+  writeRaster(brt_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[s],"/",speciesnames[s],"z",i,"_surv_BRTpreds_30m",ab_type,".tif"),overwrite=T)
   
 
 }
-
+}
 }
 }

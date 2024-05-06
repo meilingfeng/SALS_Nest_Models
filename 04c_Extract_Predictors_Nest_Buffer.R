@@ -16,12 +16,15 @@ dat_path<-"D:/Nest_Models/Data/"
 #dat_path<-"/home/FCAM/mlfeng/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
-
 # Load all nest locations and environmental data
-if(!exists("nests_buff")){
-  source("04a_Format_Load_Data_Nests_and_Predictors.R")
+if(!exists("veg_class")){
+  source("04a_Format_Load_Predictors.R")
 }
-
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (j in 1:length(speciesnames)){
+nests_buff<-st_read(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_buffed.shp"))
+nests<-st_read(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_nonbuffed.shp"))
+  
 #list for the 8 region outputs
 out_list<-list()
 
@@ -226,5 +229,6 @@ final_dat<-left_join(veg_prop,uvvr_mean, by='id')%>%
   distinct(id,.keep_all=T)
 
 #save(uvvr_mean,uvvr_diff2,ndvi_buff,pca_buff,entro_buff,corr_buff, file=paste0(path_out,"Final_outputs/4c_final_files.rds"))
-write.csv(final_dat,paste0(path_out,"Final_outputs/SALS_nest_vars_buff15.csv"),row.names = F)
+write.csv(final_dat,paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_buff15.csv"),row.names = F)
 
+}

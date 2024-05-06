@@ -43,6 +43,19 @@ path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
 ## 1. Data cleaning to transfer data into the appropriate classes for following steps
 
 #Simple function to transfer LongLat to UTM with setted zone 
+LongLatToUTM<-function(x,y){
+  require(sp)
+ # zone=(floor((x + 180)/6)) + 1
+  zone="18"
+  xy <- data.frame(ID = 1:length(x), X = x, Y = y)
+  coordinates(xy) <- c("X", "Y")
+  proj4string(xy) <- CRS("+proj=longlat +datum=WGS84")  ## for example
+  res=list()
+  for(i in 1:length(xy$X)){
+  res[[i]] <- spTransform(xy[i,], CRS(paste("+proj=utm +zone=",zone," ellps=WGS84",sep='')))
+  }
+  return(res)
+}
 LongLatToUTM<-function(x,y,zone){
   require(sp)
   xy <- data.frame(ID = 1:length(x), X = x, Y = y)
@@ -51,21 +64,36 @@ LongLatToUTM<-function(x,y,zone){
   res <- spTransform(xy, CRS(paste("+proj=utm +zone=",zone," ellps=WGS84",sep='')))
   return(as.data.frame(res))
 }
-
 #transfer rapid data LongLat to UTM: 
 rapid_dat10=rapid_dat9
-utm<-LongLatToUTM(rapid_dat10$Long,rapid_dat10$Lat,"18")
-rapid_dat10$Easting<-utm$X
-rapid_dat10$Northing<-utm$Y
+utm<-LongLatToUTM(rapid_dat10$Long,rapid_dat10$Lat)
+Easting=c()
+Northing=c()
+for(i in 1:length(utm)){
+  coords=coordinates(utm[[i]])
+  Easting[i]=coords[1]
+  Northing[i]=coords[2]
+}
+  
+rapid_dat10$Easting<-Easting
+rapid_dat10$Northing<-Northing
 
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+for (s in 1:length(speciesnames)){
+pres_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s]),~list.files(.,pattern = "pres_BRTpreds_30mb.tif$",full.names=T)))
+surv_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[s]),~list.files(.,pattern = "surv_BRTpreds_30mb.tif$",full.names=T)))
+#read as raster layers
+pres<-map(pres_list,rast)
+surv<-map(surv_list,rast)
+  
 #extract nesting probability based on rapid vegetation data location
 out_list1<-list()
 for(i in 1:length(pres)) {
-    out_list1[[i]]<-terra::extract(pres[[i]], cbind(utm$X,utm$Y))
+    out_list1[[i]]<-terra::extract(pres[[i]], cbind(Easting,Northing))
 }
 #combined the extracted presence data from eight separate layer into one
 pres2<-out_list1[[1]]
-for(i in 1:length(utm$X)) {
+for(i in 1:length(Easting)) {
   pres2[i,]=0
   for (j in 1:length(out_list1)) {
     if(is.na(out_list1[[j]][i,])==FALSE)
@@ -77,12 +105,12 @@ rapid_dat10$presence<-pres2$lyr1
 #extract nesting survival based on rapid vegetation data location
 out_list2<-list()
 for(i in 1:length(surv)) {
-  out_list2[[i]]<-terra::extract(surv[[i]], cbind(utm$X,utm$Y))
+  out_list2[[i]]<-terra::extract(surv[[i]], cbind(Easting,Northing))
 }
 
 #combined the extracted presence data from eight separate layer into one
 surv2<-out_list2[[1]]
-for(i in 1:length(utm$X)) {
+for(i in 1:length(Easting)) {
   surv2[i,]=0
   for (j in 1:length(out_list2)) {
     if(is.na(out_list2[[j]][i,])==FALSE)
@@ -90,7 +118,7 @@ for(i in 1:length(utm$X)) {
   }
 }
 rapid_dat10$survival<-surv2$lyr1
-
+write.csv(rapid_dat10,paste0(path_out,"Final_outputs/",speciesnames[s],"_Nest_Predictions_at_Rapid_Survey_Points.csv"),row.names = F)
 ## 2. Correlation plots, visualization of the importance of each veg species
 
 #test plot
@@ -105,6 +133,7 @@ ggplot(rapid_dat10,aes(y=presence))+
 rapid_dat10.pres<-rapid_dat10[,c(1,44:57,62:63)]%>%
   melt(id=c("id","presence","survival"))%>%
   as.data.frame()
+
 #store precentage data for all the groups
 rapid_dat10.pct<-rapid_dat10[,c(1,19:32,62:63)]%>%
   melt(id=c("id","presence","survival"),na.rm = TRUE)%>%
@@ -117,29 +146,36 @@ ggplot(rapid_dat10.pres)+
   facet_wrap(~variable)+
   stat_compare_means(aes(x=as.factor(value),y=presence,fill=as.factor(value)),
                       label.x = 1,label.y=0.5,paired=FALSE)
+ggsave(paste0(path_out,"Plots/",speciesnames[s],"_boxplot_presence.png"),width=12,height=10,units = "in")
+
 ggplot(rapid_dat10.pres)+
   geom_boxplot(aes(x=as.factor(value),y=survival,fill=as.factor(value)))+
   facet_wrap(~variable)+
   stat_compare_means(aes(x=as.factor(value),y=survival,fill=as.factor(value)),
                      label.x = 1,label.y=0.5,paired=FALSE)
+ggsave(paste0(path_out,"Plots/",speciesnames[s],"_boxplot_survival.png"),width=12,height=10,units = "in")
 #gam plots
 ggplot(rapid_dat10.pct.clean,aes(x=value,y=presence))+
   geom_point()+
   geom_smooth(method="gam")+
   facet_wrap(~variable,scales="free")
+ggsave(paste0(path_out,"Plots/",speciesnames[s],"_gam_presence.png"),width=10,height=10,units = "in")
+
 ggplot(rapid_dat10.pct.clean,aes(x=value,y=survival))+
   geom_point()+
   geom_smooth(method="gam")+
   facet_wrap(~variable,scales="free")
-                          
+ggsave(paste0(path_out,"Plots/",speciesnames[s],"_gam_survival.png"),width=10,height=10,units = "in")
+
 # 3. Run a principal components analysis on the percent cover variables                             
 rapid_dat.pca<-rapid_dat10[,c(19:32,62:63)]
 rapid_dat.nor<-scale(rapid_dat.pca)                     
 rapid_dat.corr<-cor(rapid_dat.nor) 
-ggcorrplot(rapid_dat.corr)                         
+ggcorrplot(rapid_dat.corr,ggtheme="theme_bw")
+ggsave(paste0(path_out,"Plots/",speciesnames[s],"_corr.png"),width=6,height=6,units = "in")
 rapid_dat.princ<-princomp(na.omit(rapid_dat.corr))                             
 summary(rapid_dat.princ)
-
+}
 ### Nest characteristics and Nest Predictions
 #--------------------------------------------------------
 # What variables might be important for nest survival after the female chooses a nest location?
