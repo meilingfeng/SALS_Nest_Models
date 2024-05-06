@@ -1,11 +1,12 @@
-library(betareg)
+library(glmmTMB)
 library(StepBeta)
 library(ggstats)
 library(usdm)
 library(glmmTMB)
 library(buildmer)
 library(broom.mixed)
-library(zoib)
+library(ggplot2)
+library(dplyr)
 ## 1. Data Preparation for following model building:
 #-------------------------------------------------------
 speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
@@ -45,24 +46,27 @@ for (s in 1:length(speciesnames)){
   #record the simplified model
 #  simplified_surv_pct_Lat2<-betareg(survival ~ alt_tall_pct+ distichlis_pct+gerardii_pct +patens_pct + alt_short_pct+ phrag_pct +low_marsh_pct+ high_marsh_pct + brackish_border_pct  + upland_pct + water_pct  + Lat+I(Lat^2), data = rapid_dat10.model )
   #record the simplified model with Lat^2 removed for further comparison
-  simplified_surv_pct<-stepmod_survival_pct  
+  simplified_surv_pct<-stepmod_survival_pct@model
   
 #  2.2 for Nesting Presence
   
   ##summary the global model using all predictor variables (percentage)
-  summary(fullmod_pres_pct<-betareg(
+  summary(fullmod_pres_pct<-glmmTMB(
     presence~alt_tall_pct+distichlis_pct+gerardii_pct+
       patens_pct+alt_short_pct+phrag_pct+low_marsh_pct+
       high_marsh_pct+brackish_border_pct+saltmarsh_border_pct+
-      trees_pct+water_pct+upland_pct+Lat+I(Lat^2),data=rapid_dat10.model))
+      trees_pct+water_pct+upland_pct+Lat+I(Lat^2),data=rapid_dat10.model,family=ordbeta(link = "logit")))
   #use stepmod function to simplify the global model
-  stepmod_pres_pct<-StepBeta(fullmod_pres_pct)
+  stepmod_pres_pct<-buildglmmTMB(presence~alt_tall_pct+distichlis_pct+gerardii_pct+
+                 patens_pct+alt_short_pct+phrag_pct+low_marsh_pct+
+                 high_marsh_pct+brackish_border_pct+saltmarsh_border_pct+
+                 upland_pct+trees_pct+water_pct+Lat+I(Lat^2),data=rapid_dat10.model,family=ordbeta(link = "logit"))
   #check the output (saltmarsh_border_pct is not significant)
-  stepmod_pres_pct
+  summary(stepmod_pres_pct)
   #record the simplified model
-#  simplified_pres_pct_Lat2<-betareg(formula =  presence ~  alt_tall_pct + gerardii_pct+patens_pct + alt_short_pct +phrag_pct  + high_marsh_pct +trees_pct+Lat +I(Lat^2),data = rapid_dat10.model)
+#  simplified_pres_pct_Lat2<-glmmTMB(formula =  presence ~  alt_tall_pct + gerardii_pct+patens_pct + alt_short_pct +phrag_pct  + high_marsh_pct +trees_pct+Lat +I(Lat^2),data = rapid_dat10.model)
   #record the simplified model with Lat^2 removed for further comparison
-  simplified_pres_pct<-stepmod_pres_pct
+  simplified_pres_pct<-stepmod_pres_pct@model
   
 # 2.3 coefficient plots
   ggcoef_model(fullmod_survival_pct)
@@ -90,92 +94,92 @@ for (s in 1:length(speciesnames)){
   mod_list_surv1<-list()
   # How much variation does each variable explain relative to each other?
   #alt_tall
-  mod_list_surv1[[1]]<-betareg(survival~alt_tall_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[1]]<-glmmTMB(survival~alt_tall_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[2]]<-betareg(survival~alt_tall_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[2]]<-glmmTMB(survival~alt_tall_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #distichlis
-  mod_list_surv1[[3]]<-betareg(survival~distichlis_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[3]]<-glmmTMB(survival~distichlis_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[4]]<-betareg(survival~distichlis_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[4]]<-glmmTMB(survival~distichlis_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #gerardii
-  mod_list_surv1[[5]]<-betareg(survival~gerardii_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[5]]<-glmmTMB(survival~gerardii_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[6]]<-betareg(survival~gerardii_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[6]]<-glmmTMB(survival~gerardii_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #patens
-  mod_list_surv1[[7]]<-betareg(survival~patens_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[7]]<-glmmTMB(survival~patens_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[8]]<-betareg(survival~patens_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[8]]<-glmmTMB(survival~patens_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #alt_short
-  mod_list_surv1[[9]]<-betareg(survival~alt_short_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_surv1[[9]]<-glmmTMB(survival~alt_short_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[10]]<-betareg(survival~alt_short_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[10]]<-glmmTMB(survival~alt_short_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #phrag
-  mod_list_surv1[[11]]<-betareg(survival~phrag_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[11]]<-glmmTMB(survival~phrag_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[12]]<-betareg(survival~phrag_pct+Lat+I(Lat^2),
-                                data=rapid_dat10.model
+  mod_list_surv1[[12]]<-glmmTMB(survival~phrag_pct+Lat+I(Lat^2),
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #HIGHMARSH
-  mod_list_surv1[[13]]<-betareg(survival~high_marsh_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[13]]<-glmmTMB(survival~high_marsh_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[14]]<-betareg(survival~high_marsh_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[14]]<-glmmTMB(survival~high_marsh_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #Barckish Border
-  mod_list_surv1[[15]]<-betareg(survival~brackish_border_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[15]]<-glmmTMB(survival~brackish_border_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[16]]<-betareg(survival~brackish_border_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[16]]<-glmmTMB(survival~brackish_border_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #Non-saltmarsh
   
-  mod_list_surv1[[17]]<-betareg(survival~upland_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[17]]<-glmmTMB(survival~upland_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[18]]<-betareg(survival~upland_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[18]]<-glmmTMB(survival~upland_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[19]]<-betareg(survival~water_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[19]]<-glmmTMB(survival~water_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[20]]<-betareg(survival~water_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[20]]<-glmmTMB(survival~water_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[21]]<-betareg(survival~low_marsh_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[21]]<-glmmTMB(survival~low_marsh_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[22]]<-betareg(survival~low_marsh_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[22]]<-glmmTMB(survival~low_marsh_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[23]]<-betareg(survival~saltmarsh_border_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[23]]<-glmmTMB(survival~saltmarsh_border_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[24]]<-betareg(survival~saltmarsh_border_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[24]]<-glmmTMB(survival~saltmarsh_border_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[25]]<-betareg(survival~trees_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[25]]<-glmmTMB(survival~trees_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_surv1[[26]]<-betareg(survival~trees_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_surv1[[26]]<-glmmTMB(survival~trees_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   mod_list_surv1[[27]]<- simplified_surv_pct
   mod_list_surv1[[28]]<- fullmod_survival_pct
@@ -328,96 +332,96 @@ for (s in 1:length(speciesnames)){
   mod_list_pres1<-list()
   # How much variation does each variable explain relative to each other?
   #alt_tall
-  mod_list_pres1[[1]]<-betareg(presence~alt_tall_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[1]]<-glmmTMB(presence~alt_tall_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[2]]<-betareg(presence~alt_tall_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[2]]<-glmmTMB(presence~alt_tall_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #distichlis
-  mod_list_pres1[[3]]<-betareg(presence~distichlis_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[3]]<-glmmTMB(presence~distichlis_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[4]]<-betareg(presence~distichlis_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[4]]<-glmmTMB(presence~distichlis_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #gerardii
-  mod_list_pres1[[5]]<-betareg(presence~gerardii_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[5]]<-glmmTMB(presence~gerardii_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[6]]<-betareg(presence~gerardii_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[6]]<-glmmTMB(presence~gerardii_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #patens
-  mod_list_pres1[[7]]<-betareg(presence~patens_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[7]]<-glmmTMB(presence~patens_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[8]]<-betareg(presence~patens_pct+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[8]]<-glmmTMB(presence~patens_pct+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #alt_short
-  mod_list_pres1[[9]]<-betareg(presence~alt_short_pres+Lat+I(Lat^2), 
-                               data=rapid_dat10.model
+  mod_list_pres1[[9]]<-glmmTMB(presence~alt_short_pres+Lat+I(Lat^2), 
+                               data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[10]]<-betareg(presence~alt_short_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[10]]<-glmmTMB(presence~alt_short_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #phrag
-  mod_list_pres1[[11]]<-betareg(presence~phrag_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[11]]<-glmmTMB(presence~phrag_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[12]]<-betareg(presence~phrag_pct+Lat+I(Lat^2),
-                                data=rapid_dat10.model
+  mod_list_pres1[[12]]<-glmmTMB(presence~phrag_pct+Lat+I(Lat^2),
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #HIGHMARSH
-  mod_list_pres1[[13]]<-betareg(presence~high_marsh_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[13]]<-glmmTMB(presence~high_marsh_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[14]]<-betareg(presence~high_marsh_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[14]]<-glmmTMB(presence~high_marsh_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #Barckish Border
-  mod_list_pres1[[15]]<-betareg(presence~brackish_border_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[15]]<-glmmTMB(presence~brackish_border_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[16]]<-betareg(presence~brackish_border_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[16]]<-glmmTMB(presence~brackish_border_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #Upland
   
-  mod_list_pres1[[17]]<-betareg(presence~upland_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[17]]<-glmmTMB(presence~upland_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[18]]<-betareg(presence~upland_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[18]]<-glmmTMB(presence~upland_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #Trees
-  mod_list_pres1[[19]]<-betareg(presence~trees_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[19]]<-glmmTMB(presence~trees_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[20]]<-betareg(presence~trees_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[20]]<-glmmTMB(presence~trees_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #Water
-  mod_list_pres1[[21]]<-betareg(presence~water_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[21]]<-glmmTMB(presence~water_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[22]]<-betareg(presence~water_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[22]]<-glmmTMB(presence~water_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #LowMarsh
-  mod_list_pres1[[23]]<-betareg(presence~low_marsh_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[23]]<-glmmTMB(presence~low_marsh_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[24]]<-betareg(presence~low_marsh_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[24]]<-glmmTMB(presence~low_marsh_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   #SaltmarshBorder
-  mod_list_pres1[[25]]<-betareg(presence~saltmarsh_border_pres+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[25]]<-glmmTMB(presence~saltmarsh_border_pres+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
-  mod_list_pres1[[26]]<-betareg(presence~saltmarsh_border_pct+Lat+I(Lat^2), 
-                                data=rapid_dat10.model
+  mod_list_pres1[[26]]<-glmmTMB(presence~saltmarsh_border_pct+Lat+I(Lat^2), 
+                                data=rapid_dat10.model,family=ordbeta(link = "logit")
   )
   
   mod_list_pres1[[27]]<- simplified_pres_pct
@@ -563,4 +567,15 @@ for (s in 1:length(speciesnames)){
   mod_tab
   
   write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/",speciesnames[s],"_rapid_veg_presence_model_selection_table",".csv"), row.names = F)
-}
+
+  simp_surv_coef<-as.data.frame(fixef(simplified_surv_pct)$cond)
+  colnames(simp_surv_coef)<-"coef"
+  simp_surv_coef$plogis<-apply(simp_surv_coef,1,FUN = function(x){plogis(x[1]+simp_surv_coef$coef[1])-plogis(simp_surv_coef$coef[1])})
+  write.csv(simp_surv_coef,paste0(path_out,"Final_outputs/Model_Results/",speciesnames[s],"_simp_surv_coef_table",".csv"), row.names = F)
+  
+  simp_pres_coef<-as.data.frame(fixef(simplified_pres_pct)$cond)
+  colnames(simp_pres_coef)<-"coef"
+  simp_pres_coef$plogis<-apply(simp_pres_coef,1,FUN = function(x){plogis(x[1]+simp_pres_coef$coef[1])-plogis(simp_pres_coef$coef[1])})
+  write.csv(simp_pres_coef,paste0(path_out,"Final_outputs/Model_Results/",speciesnames[s],"_simp_pres_coef_table",".csv"), row.names = F)
+  
+    }
