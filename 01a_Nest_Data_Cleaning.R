@@ -410,6 +410,8 @@ plots_utm19 <- st_as_sf(filter(dat1,utm.zone=="19T"& Coordinate.System=="UTM(m)"
 plots_latlong <- st_as_sf(filter(dat1,Coordinate.System%in%c("Lat/Long(DD)","Lat/Long(DD), UTM(m)")), coords = c("Long", "Lat"), crs = nad)%>%
   #rename Lat Long to Northing Easting to combine data below
   rename("Long"="Easting","Lat"="Northing")
+
+#project all points to UTM 18/ NAD83
 plots<-rbind(plots_utm18,plots_utm19,plots_latlong)%>%
   st_transform("EPSG:26918")
 
