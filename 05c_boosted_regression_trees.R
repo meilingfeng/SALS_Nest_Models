@@ -14,7 +14,12 @@ library(patchwork)
 #Load and tidy data
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
+#if running all species, set sals_only to FALSE.
+if(sals_only==T){
+speciesnames<-c("SALS")
+}else{
 speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+}
 
 for (s in 1:length(speciesnames)){
   pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_dat.csv"))
@@ -48,7 +53,7 @@ for(i in 1:k){
 
 # 2. determine optimal number of trees
 #---------------------------------------------
-
+set.seed(123)
   #First for nest presence
   # typically want at least 1000 trees, so decrease learning rate if you get less
 brt_pres<-gbm.step(data=pres_dat_train, gbm.x = 2:length(pres_dat_train), gbm.y=1, 
