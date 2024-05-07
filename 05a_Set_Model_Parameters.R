@@ -22,17 +22,21 @@ reso<-30
 #ab_type<-"v"
 ab_type<-"b" 
 
+#all species to run through
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+
+
 # veg class codes
 veg_codes<-data.frame(veg_code=c(1:2,4:9),
                       veg_class=c("HIMARSH","LOMARSH","MUD","PHRG","POOL","STRM","TERRBRD","UPLND"))
 
-
-## 3. Load observations with predictors
 # list of predictor surface files for each zone
 load(paste0(path_out,"predictor_files_all_zones_",reso,"m.rds"))
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
-speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+
+## 3. Load observation datasets with predictor variables
+
 for (j in 1:length(speciesnames)){
   # point predictors - UVVR, tidal restriction
   dat1<-read.csv(paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_local.csv"))%>%
