@@ -5,31 +5,50 @@ library(ggpubr)
 
 ## Set up 
 #------------------------------------------------------------------
-#Load data 
-source("05a_Set_Model_Parameters.R")
+
+#if running all species, set sals_only to FALSE.
+sals_only<-T
+
+#number of folds. Make sure this matches 05a_Set_Model_Parameters.R
+k<-5
 
 # Don't predict to spatial surface yet
 build<-T
 predict.surf<-F
-# Run only the test data predictions using 3 modeling methods
+
+if(sals_only==T){
+# Compare 3 modeling methods when looking at just SALS. If running all species, just do the BRTs to assess performance
 source("05c_boosted_regression_trees.R")
 source("05d_Maxent.R")
 source("05b_GLM_ModelComparison_Prediction.R")
-
+  
 model.names<-c("BRTs","Maxent","GLM")
 
+}else{
+source("05c_boosted_regression_trees.R")  
+
+model.names<-c("BRTs")
+
+}
+
+
+if(sals_only==T){
 
 #combine each model's predictions into one df per fold
 d.pres<-list() #list of dfs for each fold for predicting nest presence
 d.surv<-list() #list of dfs for each fold for predicting nest survival
 for(i in 1:k){
-d.pres[[i]]<-cbind(d.pres.brt[[i]],d.pres.mxt[[i]][,3],d.pres.glm[[i]][,3])%>%
+d.pres[[i]]<-cbind(d.pres.brt[[1]],d.pres.mxt[[i]][,3],d.pres.glm[[i]][,3])%>%
   rename("Maxent"="d.pres.mxt[[i]][, 3]","GLM"="d.pres.glm[[i]][, 3]","BRTs"="pred")
 
 d.surv[[i]]<-cbind(d.surv.brt[[i]],d.surv.mxt[[i]][,3],d.surv.glm[[i]][,3])%>%
   rename("Maxent"="d.surv.mxt[[i]][, 3]","GLM"="d.surv.glm[[i]][, 3]","BRTs"="pred")
 }
 
+}else{
+d.pres<-lapply(d.pres.brt,function(x)
+  rename(x,"BRTs"="pred"))
+}
 
 ## Get Nest presence and nest survival Discrimination and Calibration metrics for each modeling method
 #-----------------------------------------------------------------------------------------------------------
@@ -46,28 +65,44 @@ thr.s<-c()
 accu.pres<-list()
 accu.surv<-list()
 
-# calculate metrics for each fold
+# calculate performance metrics for each fold
 for(i in 1:k){
-# get optimal threshold for Maximizing Kappa
-thr.p<-optimal.thresholds(d.pres[[i]],opt.methods = c("MaxKappa","MaxSens+Spec"))
+# get optimal threshold for Maximizing percent correctly classified (while this can have issues in unbalanced prevalence (over predicting 0 for rare species), our data is balanced)
+thr.p<-optimal.thresholds(d.pres[[i]],opt.methods = c("MaxPCC"))
+
+if(sals_only==T){
 thr.pres[[i]]<-c(thr.p$BRTs,thr.p$Maxent,thr.p$GLM)
+}else{
+thr.pres[[i]]<-thr.p$BRTs
+}
 
-thr.s<-optimal.thresholds(d.surv[[i]],opt.methods = c("MaxKappa","MaxSens+Spec"))
+thr.s<-optimal.thresholds(d.surv[[i]],opt.methods = c("MaxPCC"))
 thr.surv[[i]]<-c(thr.s$BRTs,thr.s$Maxent,thr.s$GLM)
-
+if(sals_only==T){
+thr.surv[[i]]<-c(thr.s$BRTs,thr.s$Maxent,thr.s$GLM)
+}else{
+thr.surv[[i]]<-thr.s$BRTs
+}
 
 # accuracy metric tables
-accu.p<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]][c(2,4,6)])
-accu.p$Kappa<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]][c(1,3,5)])$Kappa
-accu.p$Kappa.sd<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]][c(1,3,5)])$Kappa.sd
+if(sals_only==T){
+accu.p<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]])
 accu.p[, -c(1, 2)] <- signif(accu.p[, -c(1, 2)], digits = 3)
 accu.pres[[i]]<-accu.p
 
-accu.s<-presence.absence.accuracy(d.surv[[i]],threshold=thr.surv[[i]][c(2,4,6)])
-accu.s$Kappa<-presence.absence.accuracy(d.surv[[i]],threshold = thr.surv[[i]][c(1,3,5)])$Kappa
-accu.s$Kappa.sd<-presence.absence.accuracy(d.surv[[i]],threshold = thr.surv[[i]][c(1,3,5)])$Kappa.sd
+accu.s<-presence.absence.accuracy(d.surv[[i]],threshold=thr.surv[[i]])
+
 accu.s[, -c(1, 2)] <- signif(accu.s[, -c(1, 2)], digits = 3)
 accu.surv[[i]]<-accu.s
+}else{
+  accu.p<-presence.absence.accuracy(d.pres[[i]],threshold = thr.pres[[i]])
+  accu.p[, -c(1, 2)] <- signif(accu.p[, -c(1, 2)], digits = 3)#round numbers
+  accu.pres[[i]]<-accu.p
+  
+  accu.s<-presence.absence.accuracy(d.surv[[i]],threshold=thr.surv[[i]])
+  accu.s[, -c(1, 2)] <- signif(accu.s[, -c(1, 2)], digits = 3)
+  accu.surv[[i]]<-accu.s  
+}
 }
 
 
@@ -75,22 +110,34 @@ accu.surv[[i]]<-accu.s
 auc.p<-list() #AUC is a continuous measure of discrimination (0.8-1.0 is really good)
 kappa.p<-list() #Kappa is a binary measure of calibration (above 0.4 is good)
 tss.p<-list() # True SKill Statistic is a binary measure of discrimination
-thres.p<-list() #use a threshold  that maximizes Kappa (Accuracy)
+sen.p<-list() #sensitivity (omission error)
+spec.p<-list() #specificity (commission error)
+pcc.p<-list() # percent correctly classified (overall accuracy)
+thres.p<-list() #use a threshold  that maximizes PCC (overall Accuracy)
 
 auc.s<-list()
 kappa.s<-list()
 tss.s<-list()
-thres.s<-list()
+sen.s<-list() #sensitivity (omission error)
+spec.s<-list() #specificity (commission error)
+pcc.s<-list() # percent correctly classified (overall accuracy)
+thres.s<-list() #use a threshold  that maximizes PCC (overall Accuracy)
 
 for(i in 1:k){
 auc.p[[i]]<-accu.pres[[i]][,"AUC"]
 kappa.p[[i]]<-accu.pres[[i]][,"Kappa"]
 tss.p[[i]]<-accu.pres[[i]][,"sensitivity"]+accu.pres[[i]][,"specificity"]-1
+sen.p[[i]]<-accu.pres[[i]][,"sensitivity"]
+spec.p[[i]]<-accu.pres[[i]][,"specificity"]
+pcc.p[[i]]<-accu.pres[[i]][,"PCC"]
 thres.p[[i]]<-accu.pres[[i]][,"threshold"]
 
 auc.s[[i]]<-accu.surv[[i]][,"AUC"]
 kappa.s[[i]]<-accu.surv[[i]][,"Kappa"]
 tss.s[[i]]<-accu.surv[[i]][,"sensitivity"]+accu.surv[[i]][1,"specificity"]-1
+sen.s[[i]]<-accu.surv[[i]][,"sensitivity"]
+spec.s[[i]]<-accu.surv[[i]][,"specificity"]
+pcc.s[[i]]<-accu.surv[[i]][,"PCC"]
 thres.s[[i]]<-accu.surv[[i]][,"threshold"]
 }
 
@@ -104,6 +151,18 @@ eval.tab<-data.frame(model=model.names,
            tss.p.sd=rep(NA,length(model.names)),
            tss.s=unlist(pmap(tss.s,mean)),
            tss.s.sd=rep(NA,length(model.names)),
+           sen.p=unlist(pmap(sen.p,mean)),
+           sen.p.sd=rep(NA,length(model.names)),
+           sen.s=unlist(pmap(sen.s,mean)),
+           sen.s.sd=rep(NA,length(model.names)),
+           spec.p=unlist(pmap(spec.p,mean)),
+           spec.p.sd=rep(NA,length(model.names)),
+           spec.s=unlist(pmap(spec.s,mean)),
+           spec.s.sd=rep(NA,length(model.names)),
+           pcc.p=unlist(pmap(pcc.p,mean)),
+           pcc.p.sd=rep(NA,length(model.names)),
+           pcc.s=unlist(pmap(pcc.s,mean)),
+           pcc.s.sd=rep(NA,length(model.names)),
            kappa.p=unlist(pmap(kappa.p,mean)),
            kappa.p.sd=rep(NA,length(model.names)),
            kappa.s=unlist(pmap(kappa.s,mean)),
@@ -114,6 +173,12 @@ for (i in 1:length(model.names)){ #for each model
   temp.auc.s<-c()
   temp.tss.p<-c()
   temp.tss.s<-c()
+  temp.sen.p<-c()
+  temp.sen.s<-c()
+  temp.spec.p<-c()
+  temp.spec.s<-c()
+  temp.pcc.p<-c()
+  temp.pcc.s<-c()
   temp.kappa.p<-c()
   temp.kappa.s<-c()
   for(j in 1:k){#get all the folds
@@ -121,6 +186,12 @@ for (i in 1:length(model.names)){ #for each model
     temp.auc.s[j]<-auc.s[[j]][[i]]
     temp.tss.p[j]<-tss.p[[j]][[i]]
     temp.tss.s[j]<-tss.s[[j]][[i]]
+    temp.sen.p[j]<-sen.p[[j]][[i]]
+    temp.sen.s[j]<-sen.s[[j]][[i]]
+    temp.spec.p[j]<-spec.p[[j]][[i]]
+    temp.spec.s[j]<-spec.s[[j]][[i]]
+    temp.pcc.p[j]<-pcc.p[[j]][[i]]
+    temp.pcc.s[j]<-pcc.s[[j]][[i]]
     temp.kappa.p[j]<-kappa.p[[j]][[i]]
     temp.kappa.s[j]<-kappa.s[[j]][[i]]
   }
@@ -128,12 +199,18 @@ for (i in 1:length(model.names)){ #for each model
   eval.tab[i, "auc.s.sd"]<-round(sd(temp.auc.s,na.rm=T),3)
   eval.tab[i, "tss.p.sd"]<-round(sd(temp.tss.p,na.rm=T),3)
   eval.tab[i, "tss.s.sd"]<-round(sd(temp.tss.s,na.rm=T),3)
+  eval.tab[i, "sen.p.sd"]<-round(sd(temp.sen.p,na.rm=T),3)
+  eval.tab[i, "sen.s.sd"]<-round(sd(temp.sen.s,na.rm=T),3)
+  eval.tab[i, "spec.p.sd"]<-round(sd(temp.spec.p,na.rm=T),3)
+  eval.tab[i, "spec.s.sd"]<-round(sd(temp.spec.s,na.rm=T),3)
+  eval.tab[i, "pcc.p.sd"]<-round(sd(temp.pcc.p,na.rm=T),3)
+  eval.tab[i, "pcc.s.sd"]<-round(sd(temp.pcc.s,na.rm=T),3)
   eval.tab[i, "kappa.p.sd"]<-round(sd(temp.kappa.p,na.rm=T),3)
   eval.tab[i, "kappa.s.sd"]<-round(sd(temp.kappa.s,na.rm=T),3) # alternatively use SE ", 95% CI ",round(mean(auc_p)+1.96*(sd(auc_p)/length(auc_p)),3),"-",round(mean(auc_p)-1.96*(sd(auc_p)/length(auc_p)),3))
 
 }
 
-write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_1_28_24.csv"), row.names = F)
+write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_5_6_24.csv"), row.names = F)
 
 # BRT has the best performance across all metrics. 
 # In general worse predictions for survival. 
@@ -155,7 +232,7 @@ disc_p_brt<-ggplot(d.pres[[1]],aes(BRTs,color=as.factor(obs),fill=as.factor(obs)
        fill="Observed Nest Site",
        color="Observed Nest Site",
        y="",
-       title=paste0("BRTs (AUC = ",eval.tab[1,"auc.p"],", MaxKappa = ",eval.tab[1,"kappa.p"],", TSS = ",eval.tab[1,"tss.p"],")"))
+       title=paste0("BRTs (AUC = ",eval.tab[1,"auc.p"],", PCC = ",eval.tab[1,"pcc.p"],", TSS = ",eval.tab[1,"tss.p"],")"))
 disc_p_mxt<-ggplot(d.pres[[1]],aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
@@ -166,7 +243,7 @@ disc_p_mxt<-ggplot(d.pres[[1]],aes(Maxent,color=as.factor(obs),fill=as.factor(ob
        fill="Observed Nest Site",
        color="Observed Nest Site",
        y="Density of Observations",
-       title=paste0("Maxent (AUC = ",eval.tab[2,"auc.p"],", MaxKappa = ",eval.tab[2,"kappa.p"],", TSS = ",eval.tab[2,"tss.p"],")"))
+       title=paste0("Maxent (AUC = ",eval.tab[2,"auc.p"],", PCC = ",eval.tab[2,"pcc.p"],", TSS = ",eval.tab[2,"tss.p"],")"))
 disc_p_glm<-ggplot(d.pres[[1]],aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
@@ -177,13 +254,13 @@ disc_p_glm<-ggplot(d.pres[[1]],aes(GLM,color=as.factor(obs),fill=as.factor(obs))
        fill="Observed Nest Site",
        color="Observed Nest Site",
        y="",
-       title=paste0("GLM (AUC = ",eval.tab[3,"auc.p"],", MaxKappa = ",eval.tab[3,"kappa.p"],", TSS = ",eval.tab[3,"tss.p"],")"))
+       title=paste0("GLM (AUC = ",eval.tab[3,"auc.p"],", PCC = ",eval.tab[3,"pcc.p"],", TSS = ",eval.tab[3,"tss.p"],")"))
 (disc_p_brt/disc_p_mxt/disc_p_glm)+
   plot_layout(guides = "collect")+
   plot_annotation(title=paste0("N=",nrow(pres_dat[pres_dat$group!=1&pres_dat$y==1,]),", Prevalance = ",round(nrow(pres_dat[pres_dat$group!=1&pres_dat$y==1,])/nrow(pres_dat[pres_dat$group!=1,]),2)))
 
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_pres_",ab_type,".jpeg"),
+ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_pres.jpeg"),
        width=8,height=10,dpi=300,units = "in")
 
 
@@ -208,7 +285,7 @@ disc_p_regions<-ggplot(pres_regions,aes(BRTs,color=as.factor(y),fill=as.factor(y
   facet_wrap(~region,scales = "free")
 disc_p_regions+plot_annotation(title="BRT Nest Site Discrimination by Region")
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_pres_",ab_type,"_brt.jpeg"),
+ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_pres_brt.jpeg"),
        width=8,height=8,dpi=300,units = "in")
 
 
@@ -224,7 +301,7 @@ disc_s_brt<-ggplot(d.surv[[1]],aes(BRTs,color=as.factor(obs),fill=as.factor(obs)
        fill="Observed Nest Success",
        color="Observed Nest Success",
        y="",
-       title=paste0("BRTs (AUC = ",eval.tab[1,"auc.s"],", MaxKappa = ",eval.tab[1,"kappa.s"],", TSS = ",eval.tab[1,"tss.s"],")"))
+       title=paste0("BRTs (AUC = ",eval.tab[1,"auc.s"],", PCC = ",eval.tab[1,"pcc.s"],", TSS = ",eval.tab[1,"tss.s"],")"))
 disc_s_mxt<-ggplot(d.surv[[1]],aes(Maxent,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
@@ -235,7 +312,7 @@ disc_s_mxt<-ggplot(d.surv[[1]],aes(Maxent,color=as.factor(obs),fill=as.factor(ob
        fill="Observed Nest Success",
        color="Observed Nest Success",
        y="Density of Observations",
-       title=paste0("Maxent (AUC = ",eval.tab[2,"auc.s"],", MaxKappa = ",eval.tab[2,"kappa.s"],", TSS = ",eval.tab[2,"tss.s"],")"))
+       title=paste0("Maxent (AUC = ",eval.tab[2,"auc.s"],", PCC = ",eval.tab[2,"pcc.s"],", TSS = ",eval.tab[2,"tss.s"],")"))
 disc_s_glm<-ggplot(d.surv[[1]],aes(GLM,color=as.factor(obs),fill=as.factor(obs)))+
   geom_density(alpha=0.5,adjust=1)+
   scale_fill_viridis_d(end = 0.8)+
@@ -246,12 +323,12 @@ disc_s_glm<-ggplot(d.surv[[1]],aes(GLM,color=as.factor(obs),fill=as.factor(obs))
        fill="Observed Nest Success",
        color="Observed Nest Success",
        y="",
-       title=paste0("GLM (AUC = ",eval.tab[3,"auc.s"],", MaxKappa = ",eval.tab[3,"kappa.s"],", TSS = ",eval.tab[3,"tss.s"],")"))
+       title=paste0("GLM (AUC = ",eval.tab[3,"auc.s"],", PCC = ",eval.tab[3,"pcc.s"],", TSS = ",eval.tab[3,"tss.s"],")"))
 (disc_s_brt/disc_s_mxt/disc_s_glm)+
   plot_layout(guides = "collect")+
   plot_annotation(title=paste0("N=",nrow(surv_dat[surv_dat$group!=1&surv_dat$y==1,]),", Prevalance = ",round(nrow(surv_dat[surv_dat$group!=1&surv_dat$y==1,])/nrow(surv_dat[surv_dat$group!=1,]),2)))
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_surv_",ab_type,".jpeg"),
+ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_plots_all_mods_surv.jpeg"),
        width=8,height=10,dpi=300,units = "in")
 
 
@@ -277,12 +354,12 @@ disc_s_regions<-ggplot(surv_regions,aes(BRTs,color=y,fill=y))+
   facet_wrap(~region,scales = "free")
 disc_s_regions+plot_annotation(title="BRT Nest Survival Discrimination by Region")
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_surv_",ab_type,"_brt.jpeg"),
+ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_surv_brt.jpeg"),
        width=8,height=8,dpi=300,units = "in")
 
 
 #AUC plots
-jpeg(paste0(path_out,"Final_outputs/Model_Results/AUC_plots_",ab_type,".jpeg"))
+jpeg(paste0(path_out,"Final_outputs/Model_Results/AUC_plots.jpeg"))
 par(oma = c(0, 0, 0, 0), mfrow = c(1, 2), cex = 0.7, cex.lab = 1.5)
 
 auc.roc.plot(d.pres[[5]], which.model=1,color = T, legend.cex = 0.4, mark=5,main="")
