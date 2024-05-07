@@ -3,10 +3,11 @@ library(car)#vif
 library(AICcmodavg)
 library(bbmle)
 library(broom)
+library(ggstats)
 
 ### Set up
 # -------------------------------------------
-source("C:/Users/mefen/OneDrive/Documents/Github/SHARP/05b_Regression_Assumption_Exploration.R")
+source("C:/Users/mefen/OneDrive/Documents/Github/SHARP/05b_GLM_Diagnostics_ModelBuilding.R")
 
 ## Model interpretation
 #-----------------------------------------------------------------------------
@@ -19,13 +20,15 @@ source("C:/Users/mefen/OneDrive/Documents/Github/SHARP/05b_Regression_Assumption
 # Does vegetation have better precision of local hydrology than USGS elevation data? - expect elevation to be more important north (Ruskin)
 # how much variance does elevation explain? Compared to vegetation metrics?
 
-Anova(mod_list_pres[[2]],type=3)
+pres_anova<-as.data.frame(Anova(mod_list_pres[[2]],type=3))
+write.csv(pres_anova,paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/pres_anova.csv"))
 
 # females appear to largely select nesting habitat using characteristics that reflect elevation. 
 # Vegetated cover and vegetation vigor also play a role in nest site selection, 
 # but a significant portion of nesting habitat cues remain unclassified in spectral characteristics of nest sites.
 
-Anova(mod_list_surv[[2]],type=3)
+surv_anova<-as.data.frame(Anova(mod_list_surv[[2]],type=3))
+write.csv(surv_anova,paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/surv_anova.csv"))
 
 # Surprisingly, elevation played less of a role in nest success compared to nest site selection.
 # Low marsh vegetative community explained a significant amount of variation in nest success.
@@ -44,13 +47,11 @@ summary(mod_list_surv[[2]])
 
 #format the coefficients and confidence intervals and plot
 
+#ggcoef_table(mod_list_pres[[2]],exponentiate = T)
+#ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_pres_coefs.png"), width = 10, height = 7, dpi = "retina")
 
-ggplot(t.ind, aes(x=estimate, y=term, color=term)) + 
-  geom_vline(xintercept = 0)+
-  geom_errorbar(aes(xmin=conf.low, xmax=conf.high), width=.1) +
-  geom_point()+
-  theme_bw(base_size = 12)+
-  theme(legend.position = "none")
+#ggcoef_table(mod_list_surv[[1]],exponentiate = T)
+#ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_surv_coefs.png"), width = 10, height = 7, dpi = "retina")
 
 ## 2. Model Comparison 
 #------------------------------------------
