@@ -313,13 +313,13 @@ mod_list_surv[[1]]<-glm(y~HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_moon_
                          family = binomial(link="logit"))
 
 ## compare a model using high marsh and additional variables +latitude (this is the global model)
-mod_list_pres[[2]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+poly(elevation,2)+
-                           poly(log.ndvi,2)+pca+HIMARSH*log.LOMARSH+
+mod_list_pres[[2]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+poly(elevation,2,raw = T)+
+                           poly(log.ndvi,2,raw=T)+pca+HIMARSH*log.LOMARSH+
                            latitude_c+doy_c, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv[[2]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+poly(elevation,2)+
-                           poly(log.ndvi,2)+pca+HIMARSH*log.LOMARSH+
+mod_list_surv[[2]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+poly(elevation,2,raw=T)+
+                           poly(log.ndvi,2,raw=T)+pca+HIMARSH*log.LOMARSH+
                            latitude_c+Year_c+time_since_moon_c+doy_c, 
                          data=surv_dat,
                          family = binomial(link="logit"))
@@ -359,9 +359,9 @@ mod_list_surv[[5]]<-glm(y~HIMARSH*log.tideres+HIMARSH*log.LOMARSH+latitude_c+Yea
 
 
 
-plot(mod_list_pres[[5]]) # 4 seems to have the best diagnostics, most normally distributed, equal variance, independence
+#plot(mod_list_pres[[5]]) # 4 seems to have the best diagnostics, most normally distributed, equal variance, independence
 
-plot(mod_list_surv[[4]])
+#plot(mod_list_surv[[4]])
 
 
 
