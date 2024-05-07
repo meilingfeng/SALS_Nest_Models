@@ -12,10 +12,13 @@ library(patchwork)
 #--------------------------------------------
 
 #Load and tidy data
+all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
+
 speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+
 for (s in 1:length(speciesnames)){
-  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[s],"_nest_pres_dat.csv"))
-  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[s],"_nest_surv_dat.csv"))
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_dat.csv"))
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_surv_dat.csv"))
       
 if(build==T){
 #Create objects to hold BRT parameters for each fold
