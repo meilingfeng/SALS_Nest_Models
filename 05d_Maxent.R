@@ -4,13 +4,15 @@ library(patchwork)
 # test if you can use maxent 
 maxent()
 
-### Set up
+### Set up -This analysis is for SALS only. The intent was to test which method had better prediction and we used that method (BRTs) for all other species.
 # -------------------------------------------
 #Load and tidy occurrence data
-if(!exists("pres_dat")){
-  source("05a_Set_Model_Parameters.R")
-} 
 
+all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
+
+pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_dat.csv"))
+surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_surv_dat.csv"))
+  
 if(build==T){
 # select all predictors and response
 pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))
@@ -96,7 +98,7 @@ for (j in 1:length(file_list_all_zones)){
     predictors<-rast(unlist(file_list_all_zones[[j]]))
     
     # b) name layers as their variables (rename veg_code as just Highmarsh since we're only using that one class for now)
-    names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH", "LOMARSH")
+    names(predictors)<-c("Highmarsh","cor_txt","ent_txt","ndvi","pca","elevation","uvvr_diff","uvvr_mean","precip","tideres","HIMARSH","LOMARSH")
     
     # c) select just the layers that were used as predictor variables in the model
     mod_preds<-predictors[[names(predictors)%in%c("Highmarsh",all_terms)]]
