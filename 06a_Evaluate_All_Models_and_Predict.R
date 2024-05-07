@@ -14,7 +14,7 @@ predict.surf<-F
 # Run only the test data predictions using 3 modeling methods
 source("05c_boosted_regression_trees.R")
 source("05d_Maxent.R")
-source("05b_GLM_Selection_Prediction.R")
+source("05b_GLM_ModelComparison_Prediction.R")
 
 model.names<-c("BRTs","Maxent","GLM")
 
