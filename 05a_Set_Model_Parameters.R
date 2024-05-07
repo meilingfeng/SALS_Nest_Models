@@ -4,7 +4,7 @@ library(terra)#updated version of raster package
 library(tidyterra)
 library(dismo)
 library(gbm)
-source("C:/Users/10788/Desktop/SaltMarsh/SHARP/Functions/gridSample_sf.R")
+#source("C:/Users/10788/Desktop/SaltMarsh/SHARP/Functions/gridSample_sf.R")
 #https://rspatial.org/sdm/1_sdm_introduction.html
 
 ### Set up
@@ -39,7 +39,7 @@ for (j in 1:length(speciesnames)){
     filter(bp%in%c("p",ab_type))%>%
     mutate(presence=ifelse(bp=="p",1,0))%>%
     left_join(veg_codes,by="veg_class")%>%
-    dplyr::select(-pca,-ndvi,-cor_txt,-ent_txt,-elevation)
+    dplyr::select(-pca,-ndvi,-cor_txt,-ent_txt)
   
   # buffered predictors - high marsh proportion, avg texture, ndvi, pca, and elevation
   dat<-read.csv(paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_buff15.csv"))%>%
@@ -193,6 +193,7 @@ for (j in 1:length(speciesnames)){
   regions<-sort(unique(dat_comp3[dat_comp3$presence==1,]$region))
   temp1<-list()
   
+  set.seed(123)
   for(i in 1:length(reg_size)){
     temp1[[i]]<-dat_comp3[dat_comp3$region==regions[[i]]&dat_comp3$presence==0,]
     temp1[[i]]<-temp1[[i]][sample(1:nrow(temp1[[i]]), reg_size[i]), ]
@@ -311,9 +312,9 @@ for (j in 1:length(speciesnames)){
   ## Summary of data availability after filtering and thinning/balancing
   #-----------------------------------------------------------------------------------
   nrow(pres_dat) 
-  #There are 4728 nest observations
+  #There are 3230 nest observations
   nrow(surv_dat)
-  #There are 1611 nest fate observations (now 1528)
+  #There are 1528 nest fate observations (now 1528)
   
   length(unique(pres_dat$site))
   #32 sites
@@ -347,7 +348,7 @@ for (j in 1:length(speciesnames)){
   
   table(pres_dat$y)
   table(surv_dat$y)
-  write.csv(pres_dat,paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nest_pres_dat.csv"),row.names = F)
-  write.csv(surv_dat,paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nest_surv_dat.csv"),row.names = F)
+  write.csv(pres_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_pres_dat.csv"),row.names = F)
+  write.csv(surv_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_surv_dat.csv"),row.names = F)
   
 }
