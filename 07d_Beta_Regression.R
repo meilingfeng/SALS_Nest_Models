@@ -7,6 +7,11 @@ library(buildmer)
 library(broom.mixed)
 library(ggplot2)
 library(dplyr)
+
+#use a gam() with betr family?
+# that way we can find an optimal amount of veg
+library(mgcv)
+
 ## 1. Data Preparation for following model building:
 #-------------------------------------------------------
 speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")

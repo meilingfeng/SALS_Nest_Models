@@ -25,8 +25,10 @@ speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
 species_sum<-as.data.frame(speciesnames)
 # load nest observation shapefile
 nests_all<-st_read(paste0(path_out,"Final_outputs/Nest_locations/nest_locations_01_3_23.shp"))%>%
-  # remove records missing coordinate information or that have coordinate errors
-  filter(crd_typ!=1&mssng_l_!=1&mssng_c!=1&Year>=2010)
+  # remove records that have coordinate errors (records missing location data already removed)
+  filter(crd_typ!=1&Year>=2010)
+
+
 
 for (j in 1:length(speciesnames)){
   nests<-nests_all%>%

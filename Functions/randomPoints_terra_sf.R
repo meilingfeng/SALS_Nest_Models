@@ -1,5 +1,5 @@
 # Emily Edits, randompoints from dismo made for terra
-
+r<-masks[[3]]
 .randomCellsLonLat <- function(r, n) {
   # sampling cells with weights based on their acutal area, to avoid sampling 
   # too many cells when going towards the poles

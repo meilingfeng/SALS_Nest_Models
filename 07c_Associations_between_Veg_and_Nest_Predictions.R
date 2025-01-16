@@ -26,10 +26,11 @@ library(usdm)
 ### Set up
 # -------------------------------------------
 ## 1. file paths
-dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
-path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 
+rapid_dat9<-read.csv(paste0(path_out,"Intermediate_outputs/processed_rapid_veg.csv"))
 
 ### Surrounding Vegetation and Nest Predictions
 #--------------------------------------------------------
@@ -78,10 +79,12 @@ for(i in 1:length(utm)){
 rapid_dat10$Easting<-Easting
 rapid_dat10$Northing<-Northing
 
-speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+#speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+speciesnames<-c("SALS")
+
 for (s in 1:length(speciesnames)){
-pres_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s]),~list.files(.,pattern = "pres_BRTpreds_30mb.tif$",full.names=T)))
-surv_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[s]),~list.files(.,pattern = "surv_BRTpreds_30mb.tif$",full.names=T)))
+pres_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s],"/"),~list.files(.,pattern = "pres_BRTpreds_30m.tif$",full.names=T)))
+surv_list<-unlist(map(paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[s],"/"),~list.files(.,pattern = "surv_BRTpreds_30m.tif$",full.names=T)))
 #read as raster layers
 pres<-map(pres_list,rast)
 surv<-map(surv_list,rast)

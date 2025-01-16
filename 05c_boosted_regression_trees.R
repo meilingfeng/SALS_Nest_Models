@@ -10,6 +10,8 @@ library(patchwork)
 
 ## 1. Set up
 #--------------------------------------------
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 #Load and tidy data
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
@@ -38,8 +40,12 @@ d.surv.brt<-list()
 
 
 # select all predictors and response
-pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))
-surv_dat2<-surv_dat%>%dplyr::select("id","y","group",all_of(all_terms))
+pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))%>%
+  rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
+         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
+surv_dat2<-surv_dat%>%dplyr::select("id","y","group",all_of(all_terms))%>%
+  rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
+         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
 
 
 for(i in 1:k){
@@ -134,13 +140,21 @@ d.surv.brt[[i]] <- data.frame(id=surv_dat2[surv_dat2$group==i,]$id,
 }
 
 
-
+  
+  
+  
+# 4. Create final predictions using all data
+#----------------------------------------------------------------
 if(predict.surf==T){
-  if(!file.exists(paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s],"z",1,"_pres_BRTpreds_30m",ab_type,".tif"))){    
     
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_ml_dat.csv"))#use all the records since BRTs handle missing data
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_surv_ml_dat.csv"))
+  
     #Final model for nest presence
     set.seed(123)
-    pres_dat2<-pres_dat%>%dplyr::select("id","y",all_of(all_terms))
+    pres_dat2<-pres_dat%>%dplyr::select("id","y",all_of(all_terms))%>%
+      rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
+             Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
     brt_pres<-gbm.step(data=pres_dat2[,-1], gbm.x = 2:length(pres_dat2[,-1]), gbm.y=1, 
                        family = "bernoulli",
                        tree.complexity = 5,
@@ -168,7 +182,9 @@ if(predict.surf==T){
     
     # Final model for nest survival
     set.seed(123)
-    surv_dat2<-surv_dat%>%dplyr::select("id","y",all_of(all_terms))
+    surv_dat2<-surv_dat%>%dplyr::select("id","y",all_of(all_terms))%>%
+      rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
+             Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
     brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
                        family = "bernoulli",
                        tree.complexity = 5,
@@ -190,9 +206,23 @@ if(predict.surf==T){
 
     
     
+    
+# list the optimal number of trees and lr for the final models
+brt_pres$gbm.call$best.trees
+brt_surv$gbm.call$best.trees
+
+brt_pres$gbm.call$learning.rate    
+brt_surv$gbm.call$learning.rate
 
     
+    
 # save final models and their thresholds
+    #plot fitted values against predictor
+gbm.plot(brt_pres, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T) #, continuous.resolution=100, type="response"
+
+gbm.plot(brt_surv, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T)
+
+    
       # get thresholds
         # predictions
     preds.pres <- predict.gbm(brt_pres, pres_dat2,
@@ -207,8 +237,8 @@ if(predict.surf==T){
     surv.brt.predict <- data.frame(id=surv_dat2$id,
                                   obs=surv_dat2$y, 
                                   pred=preds.surv)
-    thr.p.brt<-optimal.thresholds(pres.brt.predict,opt.methods = "MaxSens+Spec")$pred
-    thr.s.brt<-optimal.thresholds(surv.brt.predict,opt.methods = "MaxSens+Spec")$pred
+    thr.p.brt<-optimal.thresholds(pres.brt.predict,opt.methods = "MaxPCC")$pred
+    thr.s.brt<-optimal.thresholds(surv.brt.predict,opt.methods = "MaxPCC")$pred
     
     save(brt_pres,brt_surv,thr.p.brt,thr.s.brt,file=paste0(path_out,"Final_outputs/Nest_Predictions/",speciesnames[s],"_final_BRT_mods.RDS"))
     
@@ -223,6 +253,8 @@ mat_p<-list()
 mat_s<-list()
 mat_p_z1<-list()
 mat_s_z1<-list()
+
+load(paste0(path_out,"predictor_files_all_zones_30m.rds"))
 
 #Predict across each zone
 for (i in 1:length(file_list_all_zones)){
@@ -260,11 +292,10 @@ for (i in 1:length(file_list_all_zones)){
 
   
   # f) Write predicted values to rasters
-  writeRaster(brt_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s],"/",speciesnames[s],"z",i,"_pres_BRTpreds_30m",ab_type,".tif"),overwrite=T)
-  writeRaster(brt_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[s],"/",speciesnames[s],"z",i,"_surv_BRTpreds_30m",ab_type,".tif"),overwrite=T)
+  writeRaster(brt_predict_pres[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Placement/",speciesnames[s],"/",speciesnames[s],"z",i,"_pres_BRTpreds_30m.tif"),overwrite=T)
+  writeRaster(brt_predict_surv[[i]],paste0(path_out,"Final_outputs/Nest_Predictions/Success/",speciesnames[s],"/",speciesnames[s],"z",i,"_surv_BRTpreds_30m.tif"),overwrite=T)
   
 
-}
 }
 }
 }

@@ -37,11 +37,18 @@ if(sals_only==T){
 #combine each model's predictions into one df per fold
 d.pres<-list() #list of dfs for each fold for predicting nest presence
 d.surv<-list() #list of dfs for each fold for predicting nest survival
+
 for(i in 1:k){
-d.pres[[i]]<-cbind(d.pres.brt[[1]],d.pres.mxt[[i]][,3],d.pres.glm[[i]][,3])%>%
+  set.seed(123)
+  #since training and testing datasets are of different lengths depending on the method, randomly sample the same amount of predictions
+d.pres[[i]]<-cbind(d.pres.brt[[i]],
+                   d.pres.mxt[[i]][,3],
+                   d.pres.glm[[i]][,3])%>%
   rename("Maxent"="d.pres.mxt[[i]][, 3]","GLM"="d.pres.glm[[i]][, 3]","BRTs"="pred")
 
-d.surv[[i]]<-cbind(d.surv.brt[[i]],d.surv.mxt[[i]][,3],d.surv.glm[[i]][,3])%>%
+d.surv[[i]]<-cbind(d.surv.brt[[i]],
+                   d.surv.mxt[[i]][,3],
+                   d.surv.glm[[i]][,3])%>%
   rename("Maxent"="d.surv.mxt[[i]][, 3]","GLM"="d.surv.glm[[i]][, 3]","BRTs"="pred")
 }
 
@@ -210,7 +217,8 @@ for (i in 1:length(model.names)){ #for each model
 
 }
 
-write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_5_6_24.csv"), row.names = F)
+write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_5_16_24.csv"), row.names = F)
+
 
 # BRT has the best performance across all metrics. 
 # In general worse predictions for survival. 
@@ -425,7 +433,7 @@ p5<-ggerrorplot(var_p, x = "var", y = "importance",
                 desc_stat = "mean_sd", color = "black",
                 add = "jitter", add.params = list(color = "darkgray"))+
   coord_flip()+
-  labs(y="",x="",title="Nesting Activity")
+  labs(y="",x="")#,title="Probability of Nest Presence")
 
 
 var_s<-left_join(contrib_surv[[1]],contrib_surv[[2]],by="var")%>%
@@ -438,7 +446,7 @@ p6<-ggerrorplot(var_s, x = "var", y = "importance",
                 desc_stat = "mean_sd", color = "black",
                 add = "jitter", add.params = list(color = "darkgray"))+
   coord_flip()+
-  labs(y="Variable Importance",x="",title="Nesting Success")
+  labs(y="Variable Importance",x="")#,title="Probability of Nesting Success")
 
 (p5/p6)+plot_annotation(tag_levels = "A")
 
@@ -452,6 +460,6 @@ ggsave(paste0(path_out,"Final_outputs/Model_Results/var_importance_pres_surv_brt
 # Predict to spatial surface, don't build models
 predict.surf<-T
 build<-F
-# Run only with GLM and the better ML method
+# Run only the best method
 source("05c_boosted_regression_trees.R")
-source("05b_GLM_Selection_Prediction.R")
+

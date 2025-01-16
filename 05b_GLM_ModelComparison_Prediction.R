@@ -45,6 +45,7 @@ summary(mod_list_pres[[2]])
 summary(mod_list_surv[[2]])
 
 
+
 #format the coefficients and confidence intervals and plot
 
 #ggcoef_table(mod_list_pres[[2]],exponentiate = T)
@@ -66,7 +67,7 @@ summary(mod_list_surv[[2]])
 #https://www.ashander.info/posts/2015/10/model-selection-glms-aic-what-to-report/
 
 model.names<-c("Vegetation Communities","Vegetation Communities + Additional Habitat Features",
-               "High Marsh Quality: Elevation","High Marsh Quality: Radiance","High Marsh Quality: Restriction")
+               "High Marsh Quality: Elevation","High Marsh Quality: Radiance","High Marsh Quality: Restriction", "Elevation","Null")
 #For presence
 summ.table <- do.call(rbind, lapply(mod_list_pres, broom::glance))
 mod_tab_p<-ICtab(mod_list_pres, type="BIC", weights=T, delta=T,nobs=nrow(pres_dat),sort=F,mnames=model.names)
@@ -83,6 +84,7 @@ mod_tab_s<-ICtab(mod_list_surv, type="BIC", weights=T, delta=T,nobs=nrow(surv_da
 mod_tab_s[["Resid.Dev"]]<-summ.table[["deviance"]]
 mod_tab_s[["Null.Dev"]]<-summ.table[["null.deviance"]]
 mod_tab_s[["Response"]]<-rep("Success",nrow(summ.table))
+  #calculate McFaddens R2
 mod_tab_s<-as.data.frame(mod_tab_s)%>%
   mutate(across(-Response,\(x) round(x, 2)),
          Pseudo_R2= 1-(round(Resid.Dev,4)/round(Null.Dev,4)))
@@ -92,9 +94,10 @@ mod_tab<-rbind(mod_tab_p,mod_tab_s)%>%
 
 
 
-if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_5_7_24.csv"))){
-write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_5_7_24.csv"))
+if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_5_15_24.csv"))){
+write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_5_15_24.csv"))
 }
+
 
 # select the top ranked model based on BIC
   # presence models

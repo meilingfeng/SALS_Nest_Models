@@ -10,9 +10,10 @@ maxent()
 
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
-pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_dat.csv"))
+pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_dat.csv"))  
 surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_surv_dat.csv"))
-  
+
+
 if(build==T){
 # select all predictors and response
 pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))

@@ -107,7 +107,6 @@ sites <- sites%>%
 
 ## 3. Address missing records between nest locations, fates, and sites data
 # -----------------------------------------------------------------------
-
 # Not all nests in the location records have nest fate records
 missing_fates<-nests%>%
   filter(!(id%in%fates$id))
@@ -230,9 +229,11 @@ NJ14<-read.csv(paste0(dat_path,"Demographic Database/SALS 2011-2015.csv"))%>%
          nest=substr(id,3,(nchar(id)-4)),
          sp=substr(id,(nchar(id)-3),nchar(id)),
          site=substr(id,1,2),
-         id=paste0(site,yr,sp,nest))
+         id=paste0(site,yr,sp,nest))%>%
+  filter(Year==2014)%>%
+  dplyr::select(id,Lat2,Long2)
 
-NJ_test<-left_join(NJ14[NJ14$yr==14,c("id","Lat2","Long2")],dat2[,c("id","Easting","Northing")],by="id")%>%
+NJ_test<-left_join(NJ14,dat2[,c("id","Easting","Northing")],by="id")%>%
   left_join(dat1[,c("id","Lat","Long")],by="id")%>%
   mutate(dif_lat=Lat2-Lat,
          dif_long=abs(Long2)-Long)
@@ -243,9 +244,7 @@ diff_long<-mean(NJ_test$dif_long)
 # Sam's data are about 0.001 degrees off from ours and are plotting correctly.
 
 # replace all the NJ 2014 data with Sam's SALS and SESP coordinates. 
-NJ14<-NJ14%>%filter(yr=='14')
-dat1<- dat1%>%
-  left_join(NJ14[,c("id","Lat2","Long2")],by="id")%>%
+dat1<- left_join(dat1,NJ14,by="id")%>%
   mutate(Lat = ifelse(id%in%NJ14$id, Lat2, Lat),
          Long = ifelse(id%in%NJ14$id, Long2, Long),
          #mark which edit was made
@@ -254,8 +253,10 @@ dat1<- dat1%>%
 
 #For NJ 2014 non-SESP and SALS nests, apply the average difference to those coordinates
 dat1<-dat1%>%
+          # lat2/long2 hold the original coordinates
   mutate(Lat2 = ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), Lat, NA),
          Long2 = ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), Long, NA),
+          # then replace lat and long with the adjusted coords
          Lat = ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), Lat+diff_lat, Lat),
          Long = ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), Long+diff_long, Long),
          coord_shift= ifelse(site.code %in% c("AT","OC","MW") & Year==2014 & !(Species%in%c("SESP","SALS")), 1, 0))
@@ -304,7 +305,7 @@ dat1<-rbind(dat5,dat1[!(dat1$id%in%dat5$id),])
 
 
 
-# B-5) Move Decimal Degree data in UTM easting/westing columns into long/lat columns
+# B-5) Move Decimal Degree data in UTM easting/northing columns into long/lat columns
 dat6<-dat1%>%
   # if Lat is missing and Easting is using values in Latitude range
   filter(abs(Easting)<46 & abs(Easting)>36 & is.na(Lat))%>%
@@ -346,12 +347,11 @@ dat1<-rbind(dat10,dat1[!(dat1$id%in%dat10$id),])
 
 
 
-# B-6) label the coordinate system and unit for nests as Decimal Degrees or as UTM
+# B-6) label the coordinate system and unit for nests as Decimal Degrees or as UTM, prioritizing DD
 dat1<-dat1%>%
            mutate(Coordinate.System=case_when(
            (if_all(c(Lat,Long),~!is.na(.)) & missing.coords!=1) ~"Lat/Long(DD)",
-           (if_all(c(Easting,Northing),~!is.na(.)) & missing.coords!=1) ~"UTM(m)",
-           (if_all(c(Lat,Long),~!is.na(.)) & if_all(c(Easting,Northing),~!is.na(.))) ~"Lat/Long(DD), UTM(m)"))
+           (if_all(c(Easting,Northing),~!is.na(.)) & if_all(c(Lat,Long),~is.na(.)) & missing.coords!=1) ~"UTM(m)"))
 
 
 
@@ -386,7 +386,7 @@ dat1<-left_join(dat1,sites,by=c("site.code"))%>%
 ## D) Make sure all longitude values are negative
 ######
 dat1<-dat1%>%
-  mutate(Long=ifelse(Long!="NOT REC", -abs(as.numeric(Long)), Long))
+  mutate(Long=ifelse(Long!="NOT REC"&!(is.na(Long)), -abs(as.numeric(Long)), Long))
 
 
 
@@ -407,7 +407,7 @@ plots_utm18 <- st_as_sf(filter(dat1,utm.zone=="18T"& Coordinate.System=="UTM(m)"
 plots_utm19 <- st_as_sf(filter(dat1,utm.zone=="19T"& Coordinate.System=="UTM(m)"), coords = c("Easting", "Northing"), crs = utm19)%>%
   st_transform(nad)
 
-plots_latlong <- st_as_sf(filter(dat1,Coordinate.System%in%c("Lat/Long(DD)","Lat/Long(DD), UTM(m)")), coords = c("Long", "Lat"), crs = nad)%>%
+plots_latlong <- st_as_sf(filter(dat1,Coordinate.System=="Lat/Long(DD)"), coords = c("Long", "Lat"), crs = nad)%>%
   #rename Lat Long to Northing Easting to combine data below
   rename("Long"="Easting","Lat"="Northing")
 
@@ -452,7 +452,8 @@ plots<-plots%>%
   dplyr::select(-crd_typ)
 
 
-
+plots2<-plots%>%
+  distinct(id,.keep_all = T)
 
 ## 5. Write outputs to file
 #--------------------------------------------
@@ -519,3 +520,8 @@ t<-summarise(output_csv,
              batch_move_DD_to_LatLong = sum(batch_move_DD_to_LatLong ),
              coord.typo=sum(coord.typo,na.rm=T))
 
+
+t<-read.csv(paste0(path_out,"Intermediate_outputs/new_nest_coords_12_9_22.csv"))%>%
+  filter(Species=="SALS")
+sum(t$missing.coords)
+284/3452

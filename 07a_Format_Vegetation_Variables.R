@@ -17,8 +17,8 @@ library(vegan)
 
 ## 1. file paths
 #------------------------------------
-dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
-path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 ## 2. Read in vegetation data
 #------------------------------------
 # There is veg data from 3 different surveys:
@@ -375,7 +375,7 @@ rapid_dat5<- left_join(rapid_dat3,rapid_dat4,by=c("id","transect","year","Date",
     # Then pivot wider so each species category is a variable (column) with percent cover in the plot as the values
   pivot_wider(names_from = species,values_from = percent)%>%
     # remove the NA species column (make sure its column 16)
-  dplyr::select(-19)
+  dplyr::select(-23)
     # fill in NA's with 0's if data was recorded for either the species section or cover class section
 is.zero <- function(x) {
   x == 0
@@ -507,6 +507,9 @@ ggplot(rapid_dat9%>%filter(id=="192567_p1"),aes(y=distichlis_pct,x=year,group=SH
 
 ggplot(t%>%filter(year%in%c("2011","2022")&id%in%unique(t$id)[1:10]),aes(group=id,x=as.numeric(as.character(year)),y=as.numeric(as.character(HighMarshCC))))+
   geom_line(aes(color=id))
+
+
+write.csv(rapid_dat9, paste0(path_out,"Intermediate_outputs/processed_rapid_veg.csv"),row.names = F)
 
 ## 3. Transect vegetation data (Survey database)
 #---------------------------------------------------------
