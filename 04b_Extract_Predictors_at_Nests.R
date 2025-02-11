@@ -1,7 +1,7 @@
 library(sf)
 library(tidyverse)
 library(tidyterra)
-library(rgdal) #package for geospatial analyses
+#library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(exactextractr)
 
@@ -23,10 +23,10 @@ if(!exists("veg_class")){
   source("04a_Format_Load_Predictors.R")
 }
 
-#load all the species we want to focus on: Saltmarsh sparrow, Seaside sparrow, Clapper Rail, Willet, Nelson's sparrow and potential saltmarsh sparrow hybrids
-speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+#load all the species we want to focus on
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP")
 for (j in 1:length(speciesnames)){
-  nests<-st_read(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_nonbuffed.shp"),stringsAsFactors = FALSE)
+  nests<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/",speciesnames[j],"_nest_pres_bg_points.shp"),stringsAsFactors = FALSE)
 
 ## a. Marsh Vegetation Classes
 #-------------------------------
@@ -53,7 +53,7 @@ for(i in 1:length(vg_cls)) {
 
 #combine vegetation values for nests across all regions into 1 dataframe
 veg_prop<-do.call("rbind",out_list)%>%
-  distinct(id,latitude,longitude,.keep_all = T)
+  distinct(id,Lat,Long,.keep_all = T)
 
 
 ## b. mean UVVR ratio at each nest
@@ -203,7 +203,7 @@ final_dat_local<-left_join(nests,ndvi2, by='id')%>%
   left_join(uvvr_mean,by='id')%>%
   left_join(txt_entro2,by='id')%>%
   left_join(txt_corr2,by='id')%>%
-  left_join(dplyr::select(veg_prop,-latitude,-longitude,-bp),by='id')%>%
+  left_join(dplyr::select(veg_prop,-Lat,-Long,-bp),by='id')%>%
   left_join(precip2,by='id')%>%
   left_join(tideres2,by='id')%>%
   left_join(dem2,by='id')%>%
@@ -212,5 +212,5 @@ final_dat_local<-left_join(nests,ndvi2, by='id')%>%
 final_dat_local$cor_txt[is.na(final_dat_local$cor_txt)]<-0
 
 
-write.csv(st_drop_geometry(final_dat_local),paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_local.csv"),row.names = F)
+write.csv(st_drop_geometry(final_dat_local),paste0(path_out,"Intermediate_outputs/Nest_Datasets",speciesnames[j],"_nest_vars_local.csv"),row.names = F)
 }

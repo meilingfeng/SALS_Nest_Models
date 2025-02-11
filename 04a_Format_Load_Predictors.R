@@ -1,7 +1,7 @@
 library(sf)
 library(tidyverse)
 library(tidyterra)
-library(rgdal) #package for geospatial analyses
+#library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 
 
