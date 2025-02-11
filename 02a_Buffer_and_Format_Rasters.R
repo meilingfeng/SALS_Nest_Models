@@ -1,7 +1,7 @@
 
 library(tidyverse)
 library(terra)
-library(GLCMTextures)
+
 
 #######################################################################################
 ## extend the edges of each raster so that all predictor variables cover all (most) nest locations
@@ -11,8 +11,8 @@ library(GLCMTextures)
 
 ## Set up file paths
 # -------------------------------------------
-dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
-path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 
 

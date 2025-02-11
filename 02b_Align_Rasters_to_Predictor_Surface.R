@@ -25,15 +25,8 @@ library(gdalUtilities)#raster manipulation
 ## Set up
 #--------------------------------------------------------------------------
 #file path names
-dat_path<-"C:/Users/10788/Desktop/SaltMarsh/Data/"
-path_out<-"C:/Users/10788/Desktop/SaltMarsh/Outputs/"
-
-
-#functions (to select random background points)
-source("C:/Users/10788/Desktop/SaltMarsh/SHARP/Functions/randomPoints.R")
-
-# cleaned and filtered focal species nest data
-nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/SALS_nests_2010_2020_dist_err_removed.shp"))
+dat_path<-"D:/Nest_Models/Data/"
+path_out<-"D:/Nest_Models/Outputs/"
 
 
 
