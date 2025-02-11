@@ -13,17 +13,18 @@ library(exactextractr)
 ## Set file path to data and outputs
 # -------------------------------------------
 dat_path<-"D:/Nest_Models/Data/"
-#dat_path<-"/home/FCAM/mlfeng/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
 # Load all nest locations and environmental data
 if(!exists("veg_class")){
   source("04a_Format_Load_Predictors.R")
 }
-speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP")
+
 for (j in 1:length(speciesnames)){
-nests_buff<-st_read(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_buffed.shp"))
-nests<-st_read(paste0(path_out,"Intermediate_outputs/Nests/",speciesnames[j],"_nests_nonbuffed.shp"))
+nests_buff<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/",speciesnames[j],"_nest_pres_bg_buff.shp"))
+nests<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/",speciesnames[j],"_nest_pres_bg_points.shp"))
   
 #list for the 8 region outputs
 out_list<-list()
@@ -55,7 +56,7 @@ for(i in 1:length(vg_cls)) {
     unnest() #removes list cols
 }
 
-#empty region dataframes indicate no SALS nests in that region
+#empty region dataframes indicate no nests in that region
 # align columns across dataframes 
 nms <- veg_class$veg_class   # Vector of columns you want in the data.frames (the names of each vegetation class)
 nms<-c(nms,"NA") #NA indicates outside of marsh area (no vegetation class within nest buffer)
@@ -101,6 +102,19 @@ uvvr_diff2<-group_by(uvvr_diff2,id)%>%
   summarise(uvvr_diff=round(sum(weighted,na.rm=T),digits=5))%>%
   ungroup()
 
+
+
+## j. Tidal Restrictions
+#--------------------------------
+tideres2<-exact_extract(tideres, st_transform(nests_buff,crs(tideres)),
+                        function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
+                        summarize_df=T,include_cols='id')
+#convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
+tideres2<-group_by(tideres2,id)%>%
+  mutate(n=n/sum(n,na.rm=T),
+         weighted=n*value)%>%
+  summarise(tideres=round(sum(weighted,na.rm=T),digits=5))%>%
+  ungroup()
 
 
 ## d. NDVI
@@ -222,13 +236,14 @@ final_dat<-left_join(veg_prop,uvvr_mean, by='id')%>%
   left_join(entro_buff,by='id')%>%
   left_join(corr_buff,by='id')%>%
   left_join(dem_buff,by='id')%>%
+  left_join(tideres2,by='id')%>%
   dplyr::select(id,bp,region,site,Year,fate, 
                 HIMARSH,LOMARSH,POOL,PHRG,MISSING,STRM,MUD,UPLND,TERRBRD,
-                uvvr_mean,uvvr_diff,
+                uvvr_mean,uvvr_diff, tideres,
                 ndvi,pca,ent_txt,cor_txt,elevation)%>%
   distinct(id,.keep_all=T)
 
 #save(uvvr_mean,uvvr_diff2,ndvi_buff,pca_buff,entro_buff,corr_buff, file=paste0(path_out,"Final_outputs/4c_final_files.rds"))
-write.csv(final_dat,paste0(path_out,"Final_outputs/",speciesnames[j],"_nest_vars_buff15.csv"),row.names = F)
+write.csv(final_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_vars_buff15.csv"),row.names = F)
 
 }
