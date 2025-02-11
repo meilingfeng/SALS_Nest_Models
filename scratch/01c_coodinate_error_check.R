@@ -20,18 +20,19 @@ dat_path<-"D:/Nest_Models/Data/"
 
 ## Load data
 # -------------------------------------------
-nests<- read.csv(paste0(path_out,"Final_outputs/new_nest_coords_01_3_23.csv"))%>%
+nests<- read.csv(paste0(path_out,"Final_outputs/Nest_locations/corrected_nest_coords_01_29_25.csv"))%>%
   dplyr::select(id,site.code,Year,Easting2=Easting,Northing2=Northing,Lat2=Lat,Long2=Long,
                 missing.location.rec,missing.site.info,
                 missing.coords,State,batch.move.cols=batch_move_DD_to_LatLong,batch.add.dec=batch_dec_addition,
-                batch.DecMin=batch_DecMin_DD_reversed,batch.replace=replace_dat,batch.offset=coord_shift,coord.typo)%>%
+                batch.DecMin=batch_DecMin_DD_reversed,batch.replace=replace_dat,batch.offset=coord_shift,
+                out.bounds,wrong.site,iso.rec
+                )%>%
   mutate(add.nest.data = 0,
          dataset="Nests")
 
-veg<-read.csv(paste0(path_out,"Final_outputs/new_veg_coords_12_29_22_wEditflags.csv"))%>%
-  dplyr::select(type,id=veg.id,site.code,Year,Easting2=Easting,Northing2=Northing,Lat2=Lat,Long2=Long,
-                missing.coords,State,batch.move.cols=batch_move_DD_to_LatLong,batch.add.dec=batch_dec_addition,
-                batch.DecMin=batch_DecMin_DD_reversed,batch.replace=replace_dat,batch.offset=coord_shift,coord.typo,add.nest.data=nest.data.add)%>%
+veg<-read.csv(paste0(path_out,"Final_outputs/Veg_locations/corrected_veg_coords_01_29_25.csv"))%>%
+  dplyr::select(type,id=veg.id,site.code,Easting2=Easting,Northing2=Northing,Lat2=Lat,Long2=Long,
+                missing.coords,out.bounds,wrong.site,iso.rec)%>%
   mutate(dataset=ifelse(type=="Nest","Nests","Vegetation"),
          missing.location.rec=0,
          missing.site.info=0)%>%
@@ -44,7 +45,7 @@ nrow(veg[veg$dataset=="Vegetation",])
 
 
 #how many SALS nests? in CT?
-nests_og<-read.csv(paste0(dat_path,"Demographic Database/Nests_2001-2020.csv"),na.strings=c("","NOT REC","NA"))%>%
+nests_og<-read.csv(paste0(dat_path,"Demographic Database/Nests_2002-2024.csv"),na.strings=c("","NOT REC","NA"))%>%
   dplyr::select("id"="SHARPNestID","site.code"="Site", "Year", "Species",
                 "coord.system"="Coordinate.System", "utm.zone"="UTM.Zone", "Easting", "Northing", "Lat", "Long")%>%
   #Remove records missing site and year info (these were added as filler data to merge with veg data)
