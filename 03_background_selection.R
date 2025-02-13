@@ -218,6 +218,43 @@ global(masks3[[3]],fun="isNA")
 #write coordinates to csv
 write.csv(bg_all%>%mutate(Year=NA,site=NA,fate=NA,id=paste0("b",c(1:nrow(.)),"r",Region)),
           paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m_01_31_2025.csv"),row.names=F)
+
 #}
 }
 
+
+
+
+
+
+## Also write nest records with their region assignments to file
+#--------------------------------------------------------------------------
+#  get locations where nests are present for each species
+for (j in 1:length(speciesnames)){
+
+  # load cleaned focal species nest observation shapefile
+  nests<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_valid_nest_locations_2010_2024.shp"))
+  
+  
+  # bring in a mask of the tidal marsh area in 8 geographic zones along the Atlantic coast
+  masks<-list()
+  for(i in 1:length(file_list_all_zones)){
+    masks[[i]]<-rast(file_list_all_zones[[i]][[1]])
+  }
+  
+  
+  # select n random background points in each zone that equal the total number of nest records that zone
+  #first assign each nest to a geographic zone (base on which correll raster zone layer they overlap)
+  nests$Region<-NA
+  #for each zone...
+  for(i in 1:length(masks)){
+    #nests that are within the zone, assign them that zone's region number
+    nests[which(!is.nan(terra::extract(masks[[i]], nests,cells=T)[,3])),"Region"]<-i
+  }
+  #fill in region for any nests that plot out of the mask based on regions that other records in their site were assigned
+  nests<-ungroup(mutate(group_by(nests,site_cd),Region=max(Region,na.rm=T)))%>%
+    st_drop_geometry()
+
+  #write regions to csv
+  write.csv(nests,paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests2024_regions.csv"),row.names=F)
+}
