@@ -13,8 +13,8 @@ library(lme4)
 dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
-pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_dat.csv"))
-surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_surv_dat.csv"))
+pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_GLM_dat.csv"))
+surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_fate_GLM_dat.csv"))
 
 
 ## 1. Plot the data
@@ -26,8 +26,8 @@ surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest
   # How are observations distributed across marsh sites?
 n_nest_per_site<-summarise(group_by(surv_dat,site),n_nests=n())%>%filter(!(is.na(site)))
 hist(n_nest_per_site$n_nests) 
-length(n_nest_per_site[n_nest_per_site$n_nests<251,]$n_nests)/nrow(n_nest_per_site)
-  #96% of sites have 250 or less nest observations
+length(n_nest_per_site[n_nest_per_site$n_nests<101,]$n_nests)/nrow(n_nest_per_site)
+  #76% of sites have 100 or fewer nest observations
 
   #create lat bins and look at sampling intensity across latitude
 n_nest_per_site<-surv_dat%>%
@@ -39,15 +39,14 @@ ggplot(n_nest_per_site, aes(x=lat_bin, y=n_nests))+
   geom_boxplot()+
   labs(y= "Number of nest observations", x="Geographic Region")+
   geom_jitter(width = 0.2)
-  # some difference in sampling intensity throughout region, but nothing seems overly under sampled
-  # lat 42 has the least sites
+  # some difference in nest observations across latitude, less nests near range edges.
 
 
 # look at temporal distribution across sites
 
   #16 sites have at least 5 years of sampling
-  #Site AT, ER, HM, ID, MN, OC all have 6 years of sampling
-  #Sites EL and CL have the most years of sampling (8 and 7 years)
+  #Site AT, OC, EL, CL all have 8+ years of sampling
+  #Sites HM and ER have the most years of sampling (12 years)
 n_yr_per_site<-summarise(group_by(surv_dat,site),n_years=length(unique(Year)))
 n_yr_per_site
 ggplot(n_yr_per_site)+
@@ -57,19 +56,15 @@ ggplot(n_yr_per_site)+
 
 
   #Which years sampled the most, for which sites?
-  #seems like most sites with longer monitoring efforts began in 2011 and continue through 2020
-  #Most sites sampled only once occured before 2010, but a few one-off sites were also sampled 2011-2020
+  #most sites covered between 2011-2015, more single year sites appear past 2020
 ggplot(left_join(distinct(surv_dat[,c("Year","site")], .keep_all = T),n_yr_per_site,by="site"))+
   geom_bar(aes(x=as.factor(Year),fill=as.factor(n_years)))+
   scale_fill_viridis_d()+
   labs(fill="N Years\nSite Sampled", x="Year",y="Number of Sites Sampled")+
   theme_bw()
 
-n_nest_per_siteyr<-summarise(group_by(filter(surv_dat,bp!="b"),site,Year),n_nests=n())
+n_nest_per_siteyr<-summarise(group_by(surv_dat,site,Year),n_nests=n())
 arrange(n_nest_per_siteyr,desc(n_nests))
-
-  # 2011-2015 has the most sites continuously sampled
-
 
 
 
@@ -79,25 +74,17 @@ ggplot(pres_dat[pres_dat$y==1,],aes(x=as.factor(Year),y=ndvi))+#test different h
   geom_boxplot()+
   geom_jitter(aes(color=site),alpha=0.3)
   #there appears to be some differences over the years, but mostly due to changes in which sites were sampled those years
-
   
-  # assume that later into the moon cycle results in more nest flooding, depending on the height of the spring tide too
-ggplot(surv_dat, aes(y=y,x=time_since_moon,group=site))+
+  # assume that later into the spring tide cycle results in more nest flooding, depending on the height of the spring tide too
+ggplot(surv_dat, aes(y=y,x=time_since_tide,group=site))+
   geom_point(aes(color=site))+
   geom_smooth(aes(color=site),method="lm",se=F)
   #generally yes for many sites, predation and low tides may also be introducting noise
 
   # also expect that sparrows nest closer to new moon later in the season as they become syncronized, but this may depend on the height of MHHWs
-plot_dat<-surv_dat%>%mutate(Month = format(as.Date(date), "%m"))%>%
-  arrange(Month,Year)
-ggplot(plot_dat,aes(x=Month,y=time_since_moon))+
-  geom_boxplot()+
-  geom_jitter(aes(color=site),alpha=0.3)+
-  facet_wrap(~Year)
-
-plot_dat<-surv_dat%>%mutate(MonthDay = format(as.Date(date), "%m-%d"))%>%
+plot_dat<-surv_dat%>%mutate(MonthDay = format(as.Date(init_date), "%m-%d"))%>%
   arrange(MonthDay,Year)
-ggplot(plot_dat,aes(x=MonthDay,y=time_since_moon,group=site))+
+ggplot(plot_dat,aes(x=MonthDay,y=time_since_tide,group=site))+
   geom_point(aes(color=site))+
   geom_smooth(aes(color=site),method = "lm",se=F)
 
@@ -111,17 +98,19 @@ success_site<-surv_dat%>%group_by(site)%>%
 
 hist(success_site$pr_success, breaks=seq(0,1,0.1))
 plot(success_site$pr_success~success_site$lat,xlab="Site latitude",ylab="Proportion of nests fledging")
-#nest success appears to be more variable at higher latitudes, but similar on average
+#nest success appears to be more variable at higher latitudes, but similar means
 mean(success_site$pr_success)
-#nest success across sites is 50% on average
+#nest success across sites is 34% on average
 
-ggplot(pres_dat,aes(x=elevation,y=y))+#test different habitat variables
+
+#plot relationships with covariates
+ggplot(pres_dat,aes(x=LOMARSH,y=y))+#test different habitat variables
   geom_point()+
   geom_smooth(method="gam",se=F)+
-  facet_wrap(~region)
+  facet_wrap(~Region)
 
 # day of year influences site selection (effects of habitat variables)
-plot_dat<-pres_dat%>%mutate(Month = format(as.Date(date), "%m"))%>%
+plot_dat<-pres_dat%>%mutate(Month = format(as.Date(init_date), "%m"))%>%
   arrange(Month,Year)
 ggplot(plot_dat,aes(x=LOMARSH,y=y,group=Month))+#test different habitat variables
   geom_point(aes(color=Month))+
@@ -149,7 +138,7 @@ ggplot(plot_dat,aes(x=LOMARSH,y=y,group=Month))+#test different habitat variable
 #list all predictor variables in the full model
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 pres_preds<-pres_dat[,c(all_terms,"doy")]
-surv_preds<-surv_dat[,c(all_terms,"time_since_moon","Year")]
+surv_preds<-surv_dat[,c(all_terms,"doy","time_since_tide","Year")]
 
 
 #Boxplot, histogram, scatterplot are graphical tools for outlier detection
@@ -176,7 +165,7 @@ dev.off()
 # even moderate collinearity can mask weak ecological signals so using a low threshold like 3 or 2 is important.
 mod.p<-glm(as.formula(paste0("y~",paste(c(all_terms,"doy"),collapse = "+"))), pres_dat,family=binomial(link="logit"))
 car::vif(mod.p)
-mod.s<-glm(as.formula(paste0("y~",paste(c(all_terms,"time_since_moon","Year"),collapse = "+"))), surv_dat,family=binomial(link="logit"))
+mod.s<-glm(as.formula(paste0("y~",paste(c(all_terms,"time_since_tide","Year"),collapse = "+"))), surv_dat,family=binomial(link="logit"))
 car::vif(mod.s)
 #keeping all variables seems fine, no VIFs above 3
 
@@ -184,11 +173,10 @@ car::vif(mod.s)
 
 ## 4. Should we consider interactions?
 #---------------------------------------------------
-# Hypothesis: The quality (resiliency) of high marsh is more attractive for nest building and leads to more successful nests. 
+# Hypothesis: The quality of high marsh varies. 
 # Interactions: Areas with more high marsh AND 
-              # lower mean UVVR (more vegetated/resilient)
-              # 0-negative UVVR change (stable resilience or improved vegetation cover)
-              # certain value of reflectance that indicates an unmeasured habitat characteristic
+              # higher elevation
+              # brighter PCA = less inundated
               # higher NDVI (healthier veg)
 # within the high marsh, do locations with (successful) nests have higher NDVI, etc?
 
@@ -201,31 +189,38 @@ p1<-ggplot(pres_dat,aes(x=HIMARSH,y=pca,group=as.factor(y)))+
   labs(color = "Nest Site", linetype= "Nest Site",y = "PC1", x="Proportion High Marsh") + 
   theme_classic(base_size = 12)
 
-# nests are in high marsh with less tidal restriction
-p2<-ggplot(pres_dat,aes(x=HIMARSH,y=tideres,group=as.factor(y)))+
+# nests are in high marsh with higher elevation
+p2<-ggplot(pres_dat,aes(x=HIMARSH,y=elevation,group=as.factor(y)))+
   geom_point(aes(color=as.factor(y)))+
   geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
   scale_color_manual(values=c("#5ab4ac","#d8b365"))+
-  labs(color = "Nest Site", linetype= "Nest Site",y = "Tidal Restriction Index", x="Proportion High Marsh") + 
+  labs(color = "Nest Site", linetype= "Nest Site",y = "Elevation", x="Proportion High Marsh") + 
+  theme_classic(base_size=12)
+
+# nests are in high marsh with higher NDVI
+p3<-ggplot(pres_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+
+  geom_point(aes(color=as.factor(y)))+
+  geom_smooth(method="lm",aes(linetype=as.factor(y)),color="black")+
+  scale_color_manual(values=c("#5ab4ac","#d8b365"))+
+  labs(color = "Nest Site", linetype= "Nest Site",y = "NDVI", x="Proportion High Marsh") + 
   theme_classic(base_size=12)
 
 
-p1+p2+plot_annotation(tag_levels = 'A')
-ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions.png"), width = 8, height = 4, dpi = "retina")
 
+(p1/p2/p3)+plot_annotation(tag_levels = 'A')+
+  plot_layout(axis_titles = "collect")
+#ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/himarsh_quality_interactions.png"), width = 5, height = 8, dpi = "retina")
 
-
-# conclusions: high marsh is selected nesting habtiat but the suitable range for successful nesting lies within the range of possible elevations in the high marsh.
-  # high marsh * elevation for success
-# high marsh has higher PCA (brightness) for nesting areas and lower tidal restriction
-  # interaction between high marsh and these variables suggest that quality of high marsh is dependent on these other factors.
+# high marsh has higher PCA (brightness) for nesting areas and higher elevation
+  # plots suggest that quality of high marsh is dependent on these other factors.
 
 
 
 ## 5. Are relationships between response and predictors linear?
+#----------------------------------------------------------------------------------
 
-# to all models, assume relationships between phenological vegetation metrics change with DoY
-# for surival models, assume survival decreases with increasing time since last new moon, also test whether survival is changing over time (Year)
+# for all models, assume relationships between phenological vegetation metrics change with DoY
+# for surival models, assume survival decreases with increasing time since last spring tide, also test whether survival is changing over time (Year)
 
 # make ndvi and elevation quadratic and center time variables and latitude
 pres_dat<-pres_dat%>%
@@ -243,7 +238,7 @@ surv_dat<-surv_dat%>%
          latitude_c=scale(latitude,center = T, scale = T),
          pca_c=scale(pca,center = T, scale = T),
          # also apply Year and time since moon to survival
-         time_since_moon_c=scale(time_since_moon,center = T, scale = T),
+         time_since_tide_c=scale(time_since_tide,center = T, scale = T),
          Year_c=scale(Year,center = T, scale = T),
          log.ndvi=log10(ndvi+0.0001),
          log.tideres=log10(tideres+0.0001),
@@ -280,114 +275,129 @@ ggplot(surv_long, aes(x = value, y = y)) +
 
 ## 6. Are we meeting the assumptions of a GLM?
 #----------------------------------------------------------------------
-
-
 ## Start a list of potential models
 mod_list_pres<-list()
 mod_list_surv<-list()
 
 
+#NULL MODELS
+mod_list_pres[[1]]<-glm(y~latitude_c+doy_c, 
+                        data=pres_dat,
+                        family = binomial(link="logit"))
+mod_list_surv[[1]]<-glm(y~latitude_c+Year_c+time_since_tide_c+doy_c, 
+                        data=surv_dat,
+                        family = binomial(link="logit"))
+
+#ELEVATION MODELS
+# does vegetation matter or is elevation enough to signal where nests can avoid flooding?
+mod_list_pres[[2]]<-glm(y~poly(elevation,2,raw = T)+latitude_c+doy_c, 
+                        data=pres_dat,
+                        family = binomial(link="logit"))
+mod_list_surv[[2]]<-glm(y~poly(elevation,2,raw=T)+latitude_c+Year_c+time_since_tide_c+doy_c, 
+                        data=surv_dat,
+                        family = binomial(link="logit"))
+
+
+#VEG COMMUNITY MODELS
 # Do marsh vegetation community classifications best describe nesting habitat?
-## compare a model using just proportion of high marsh + low marsh + latitude
-### low marsh is also included to give context to where high marsh is
-###  - edge of the flood zone vs closer to the marsh boundary
-### marsh zones often used to delineate suitable habitat - based on elevation relative to tidal amplitude and vegetation communities
-mod_list_pres[[1]]<-glm(y~HIMARSH*LOMARSH+latitude_c+doy_c, 
+# compare a model using just proportion of high marsh + low marsh + latitude
+# low marsh is also included to give context to where high marsh is edge of the flood zone vs closer to the marsh boundary
+# marsh zones often used to delineate suitable habitat - based on elevation relative to tidal amplitude and vegetation communities
+mod_list_pres[[3]]<-glm(y~HIMARSH*LOMARSH+latitude_c+doy_c, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv[[1]]<-glm(y~HIMARSH*LOMARSH+latitude_c+Year_c+time_since_moon_c+doy_c, 
+mod_list_surv[[3]]<-glm(y~HIMARSH*LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
-## compare a model using high marsh and additional variables +latitude (this is the global model)
-mod_list_pres[[2]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+poly(elevation,2,raw = T)+
-                           poly(log.ndvi,2,raw=T)+pca_c+HIMARSH*LOMARSH+
-                           latitude_c+doy_c, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv[[2]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+poly(elevation,2,raw=T)+
-                           poly(log.ndvi,2,raw=T)+pca_c+HIMARSH*LOMARSH+
-                           latitude_c+Year_c+time_since_moon_c+doy_c, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-
-
-
-# Does nest habitat quality vary within high marsh? Does including quality improve the variance explained by veg community classifications?
-
-# although high marsh is broadly representative of suitable nesting vegetation and elevation for flood protection,
-# there seems to be a smaller range of elevation within this habitat that is best suited for successful nesting.
-# sparrows also may use vegetative habitat cues to find high quality nesting habitat within high marsh (gerardii)
-mod_list_pres[[3]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-
-mod_list_surv[[3]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_moon_c+doy_c, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-# unexplained characteristics about the high marsh
-mod_list_pres[[4]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv[[4]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_moon_c+doy_c, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-# sparrows have also been shown to occupy high marsh habitat that has been degraded by tidal restriction, this may be a driver of high marsh habitat quality.
-# holistically represent characteristics of degraded habitat that are directly attributed to a major driver of habitat loss. 
-mod_list_pres[[5]]<-glm(y~HIMARSH*log.tideres+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
-                         data=pres_dat,
-                         family = binomial(link="logit"))
-mod_list_surv[[5]]<-glm(y~HIMARSH*log.tideres+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_moon_c+doy_c, 
-                         data=surv_dat,
-                         family = binomial(link="logit"))
-
-
-# does vegetation even matter or is just including elevation enough to signal where nests can avoid flooding and predation?
-mod_list_pres[[6]]<-glm(y~poly(elevation,2,raw = T)+latitude_c+doy_c, 
+#WITHIN-MARSH MODELS
+# Does nest habitat quality vary within high marsh?
+# elevation
+mod_list_pres[[4]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[6]]<-glm(y~poly(elevation,2,raw=T)+latitude_c+Year_c+time_since_moon_c+doy_c, 
+
+mod_list_surv[[4]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
-# null model
-mod_list_pres[[7]]<-glm(y~latitude_c+doy_c, 
+# brightness
+mod_list_pres[[5]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[7]]<-glm(y~latitude_c+Year_c+time_since_moon_c+doy_c, 
+mod_list_surv[[5]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
+                        data=surv_dat,
+                        family = binomial(link="logit"))
+
+# NDVI
+mod_list_pres[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
+                        data=pres_dat,
+                        family = binomial(link="logit"))
+mod_list_surv[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
+                        data=surv_dat,
+                        family = binomial(link="logit"))
+
+# all within-marsh characteristics (additive)
+mod_list_pres[[7]]<-glm(y~poly(elevation,2,raw = T)+
+                          poly(log.ndvi,2,raw=T)+
+                          pca_c+
+                          HIMARSH*LOMARSH+
+                          latitude_c+doy_c, 
+                        data=pres_dat,
+                        family = binomial(link="logit"))
+mod_list_surv[[7]]<-glm(y~poly(elevation,2,raw=T)+
+                          poly(log.ndvi,2,raw=T)+
+                          pca_c+
+                          HIMARSH*LOMARSH+
+                          latitude_c+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 
-#plot(mod_list_pres[[5]]) # 4 seems to have the best diagnostics, most normally distributed, equal variance, independence
-
-#plot(mod_list_surv[[4]])
 
 
-##testing for overdispersion 
-chisq<-sum(resid(mod_list_pres[[7]],type='pearson')^2) 
-chisq/df.residual(mod_list_pres[[7]]) ##not too bad
+#BETWEEN-MARSH MODELS
+mod_list_pres[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*LOMARSH+
+                          latitude_c+doy_c, 
+                        data=pres_dat,
+                        family = binomial(link="logit"))
+mod_list_surv[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*LOMARSH+
+                          latitude_c+Year_c+time_since_tide_c+doy_c, 
+                        data=surv_dat,
+                        family = binomial(link="logit"))
 
-1-pchisq(chisq,df=df.residual(mod_list_pres[[6]]))
-#not significant
 
-chisq<-sum(resid(mod_list_surv[[7]],type='pearson')^2) 
-chisq/df.residual(mod_list_surv[[7]]) ##not too bad
 
-1-pchisq(chisq,df=df.residual(mod_list_surv[[1]]))
-#not significant
+#GLOBAL MODEL
+mod_list_pres[[9]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+
+                          poly(elevation,2,raw = T)+poly(log.ndvi,2,raw=T)+pca_c+
+                          HIMARSH*LOMARSH+
+                          latitude_c+doy_c, 
+                         data=pres_dat,
+                         family = binomial(link="logit"))
+mod_list_surv[[9]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+
+                          poly(elevation,2,raw=T)+poly(log.ndvi,2,raw=T)+pca_c+
+                          HIMARSH*LOMARSH+
+                          latitude_c+Year_c+time_since_tide_c+doy_c, 
+                         data=surv_dat,
+                         family = binomial(link="logit"))
 
+
+#Diagnostics
+mod<-mod_list_surv[[3]]
+  #overdispersed?
+chisq <- sum(resid(mod, type='pearson')^2)
+chisq/df.residual(mod) 
+
+par(mfrow=c(2,2));plot(mod) # normally distributed, equal variance, independence?
 
 
 
 #get residuals
-pres_dat$res<-mod_list_pres[[2]]$residuals  
-surv_dat$res<-mod_list_surv[[2]]$residuals 
-pres_dat$prob<-mod_list_pres[[2]]$fitted.values
-surv_dat$prob<-mod_list_surv[[2]]$fitted.values
+pres_dat$res<-rstandard(mod_list_pres[[9]]) 
+surv_dat$res<-rstandard(mod_list_surv[[9]])
+pres_dat$prob<-mod_list_pres[[9]]$fitted.values
+surv_dat$prob<-mod_list_surv[[9]]$fitted.values
 
 
 
@@ -414,18 +424,19 @@ plot(gram2)
 
 
 # temporal autocorrelation
-dat2.2<-dat2%>%group_by(site,Year)%>%summarise(res=mean(res))%>%
-  arrange(site,Year)%>%
+dat2.2<-dat2%>%group_by(Year)%>%summarise(res=mean(res))%>%
+  arrange(Year)%>%
   mutate(lag1=lag(res,n=1),
          lag2=lag(res,n=2))
 
-dat3.2<-dat3%>%group_by(site,Year)%>%summarise(res=mean(res))%>%
-  arrange(site,Year)%>%
+dat3.2<-dat3%>%group_by(Year)%>%summarise(res=mean(res))%>%
+  arrange(Year)%>%
   mutate(lag1=lag(res,n=1),
          lag2=lag(res,n=2))
 
 
-ggplot(filter(dat3.2,!(is.na(lag1))),aes(x=res,y=lag2))+
+
+ggplot(filter(dat3.2,!(is.na(lag1))),aes(x=res,y=lag1))+
   geom_point()+
   labs(x="Residuals",y="Residuals 1 Year Lag",title="Nest Survival")+
   theme_classic(base_size=12)
