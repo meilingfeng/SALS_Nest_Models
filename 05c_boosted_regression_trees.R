@@ -20,12 +20,12 @@ all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff
 if(sals_only==T){
 speciesnames<-c("SALS")
 }else{
-speciesnames<-c("SALS","SESP","CLRA","WILL","NESP","HYBR")
+speciesnames<-c("SALS","SESP","CLRA","WILL","NESP")
 }
 
 for (s in 1:length(speciesnames)){
-  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_dat.csv"))
-  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_surv_dat.csv"))
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_ML_dat.csv"))
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_ML_dat.csv"))
       
 if(build==T){
 #Create objects to hold BRT parameters for each fold
@@ -40,10 +40,10 @@ d.surv.brt<-list()
 
 
 # select all predictors and response
-pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))%>%
+pres_dat2<-pres_dat%>%dplyr::select("id","y","group",,"latitude","doy",all_of(all_terms))%>%
   rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
          Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
-surv_dat2<-surv_dat%>%dplyr::select("id","y","group",all_of(all_terms))%>%
+surv_dat2<-surv_dat%>%dplyr::select("id","y","group","latitude","doy","time_since_tide","Year",,all_of(all_terms))%>%
   rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
          Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
 
@@ -147,12 +147,12 @@ d.surv.brt[[i]] <- data.frame(id=surv_dat2[surv_dat2$group==i,]$id,
 #----------------------------------------------------------------
 if(predict.surf==T){
     
-  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_ml_dat.csv"))#use all the records since BRTs handle missing data
-  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_surv_ml_dat.csv"))
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_ML_dat.csv"))
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_ML_dat.csv"))
   
     #Final model for nest presence
     set.seed(123)
-    pres_dat2<-pres_dat%>%dplyr::select("id","y",all_of(all_terms))%>%
+    pres_dat2<-pres_dat%>%dplyr::select("id","y",,"latitude","doy",all_of(all_terms))%>%
       rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
              Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
     brt_pres<-gbm.step(data=pres_dat2[,-1], gbm.x = 2:length(pres_dat2[,-1]), gbm.y=1, 
@@ -182,7 +182,7 @@ if(predict.surf==T){
     
     # Final model for nest survival
     set.seed(123)
-    surv_dat2<-surv_dat%>%dplyr::select("id","y",all_of(all_terms))%>%
+    surv_dat2<-surv_dat%>%dplyr::select("id","y",,"latitude","doy","time_since_tide","Year",all_of(all_terms))%>%
       rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
              Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
     brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
@@ -208,11 +208,11 @@ if(predict.surf==T){
     
     
 # list the optimal number of trees and lr for the final models
-brt_pres$gbm.call$best.trees
-brt_surv$gbm.call$best.trees
+brt_pres$gbm.call$best.trees #1750
+brt_surv$gbm.call$best.trees #2700
 
-brt_pres$gbm.call$learning.rate    
-brt_surv$gbm.call$learning.rate
+brt_pres$gbm.call$learning.rate    #0.05
+brt_surv$gbm.call$learning.rate    #0.001
 
     
     
