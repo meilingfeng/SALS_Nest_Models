@@ -10,14 +10,15 @@ maxent()
 
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
-pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_dat.csv"))  
-surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_surv_dat.csv"))
-
+pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_ML_dat.csv"))
+pres_dat<-pres_dat[complete.cases(pres_dat[,c(all_terms,"latitude","doy")]),]
+surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_fate_ML_dat.csv"))
+surv_dat<-surv_dat[complete.cases(surv_dat[,c(all_terms,"latitude","doy","time_since_tide","Year")]),]
 
 if(build==T){
 # select all predictors and response
-pres_dat2<-pres_dat%>%dplyr::select("id","y","group",all_of(all_terms))
-surv_dat2<-surv_dat%>%dplyr::select("id","y","group",all_of(all_terms))
+pres_dat2<-pres_dat%>%dplyr::select("id","y","group","latitude","doy",all_of(all_terms))
+surv_dat2<-surv_dat%>%dplyr::select("id","y","group","latitude","doy","time_since_tide","Year",all_of(all_terms))
 
 # object to hold the predictions from each fold
 d.pres.mxt<-list()
