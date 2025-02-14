@@ -7,33 +7,28 @@ library(ggstats)
 
 ### Set up
 # -------------------------------------------
-source("C:/Users/mefen/OneDrive/Documents/Github/SHARP/05b_GLM_Diagnostics_ModelBuilding.R")
+source("C:/Users/mefen/OneDrive/Documents/Github/SALS_Nest_Models/05b_GLM_Diagnostics_ModelBuilding.R")
 
 ## Model interpretation
 #-----------------------------------------------------------------------------
 
 #Things to test with ANOVA:
 
-# Are we missing information about nesting habitat characteristics in existing continuous habitat measures and classifications 
-# that could be explained by remotely sensed surface characteristics? How much variance does PCA explain?
+# Are we missing information about nesting habitat characteristics in classified RS variables? How much variance does raw reflectance (PC1) explain?
+# Does vegetation describe flood risk better than elevation? - expect elevation to be more important north (Ruskin)
+  # how much variance does elevation explain? Compared to vegetation metrics?
 
-# Does vegetation have better precision of local hydrology than USGS elevation data? - expect elevation to be more important north (Ruskin)
-# how much variance does elevation explain? Compared to vegetation metrics?
-
-pres_anova<-as.data.frame(Anova(mod_list_pres[[2]],type=3))
+pres_anova<-as.data.frame(Anova(mod_list_pres[[9]],type=3))
 write.csv(pres_anova,paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/pres_anova.csv"))
 
-# females appear to largely select nesting habitat using characteristics that reflect elevation. 
-# Vegetated cover and vegetation vigor also play a role in nest site selection, 
-# but a significant portion of nesting habitat cues remain unclassified in spectral characteristics of nest sites.
 
-surv_anova<-as.data.frame(Anova(mod_list_surv[[2]],type=3))
+surv_anova<-as.data.frame(Anova(mod_list_surv[[9]],type=3))
 write.csv(surv_anova,paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/surv_anova.csv"))
 
-# Surprisingly, elevation played less of a role in nest success compared to nest site selection.
+# Elevation played less of a role in nest success compared to nest site selection.
 # Low marsh vegetative community explained a significant amount of variation in nest success.
 # unsurprisingly, time since the last spring tide and day of the year also explain much of the variation in nesting success.
-# One of the main drivers of nest failure is flooding, which was supported by the importance of spring tide timing.
+# One of the main drivers of nest failure is flooding, which was supported by the importance of spring tide timing and DOY.
 # The increased importance of vegetation communities relative to elevation as seen in the site selection models
 # could suggest that vegetation is currently a more accurate predictor of flood conditions on the marsh.
 # An important change in elevation for a tidal nesting specialist like SALS is a matter of centimeters above or below the high tide line.
@@ -41,24 +36,23 @@ write.csv(surv_anova,paste0(path_out,"Intermediate_outputs/Data_Model_Exploratio
 
 
 #check out coefficients
-summary(mod_list_pres[[2]])
-summary(mod_list_surv[[2]])
+summary(mod_list_pres[[9]])
+summary(mod_list_surv[[9]])
 
 
 
 #format the coefficients and confidence intervals and plot
 
-#ggcoef_table(mod_list_pres[[2]],exponentiate = T)
+#ggcoef_table(mod_list_pres[[9]],exponentiate = T)
 #ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_pres_coefs.png"), width = 10, height = 7, dpi = "retina")
 
-#ggcoef_table(mod_list_surv[[1]],exponentiate = T)
+#ggcoef_table(mod_list_surv[[9]],exponentiate = T)
 #ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_surv_coefs.png"), width = 10, height = 7, dpi = "retina")
+
+
 
 ## 2. Model Comparison 
 #------------------------------------------
-
-
-
 
 # model comparison table
 #want to report AIC or AICc if small sample or BIC if large sample (better at parsimony than AIC)
@@ -66,50 +60,51 @@ summary(mod_list_surv[[2]])
 #also redicual deviance and df for each model provide rough goodness of fit.
 #https://www.ashander.info/posts/2015/10/model-selection-glms-aic-what-to-report/
 
-model.names<-c("Vegetation Communities","Vegetation Communities + Additional Habitat Features",
-               "High Marsh Quality: Elevation","High Marsh Quality: Radiance","High Marsh Quality: Restriction", "Elevation","Null")
+model.names<-c("Null","Elevation",
+               "Vegetation Communnities","Within-Marsh: Elevation","Within-Marsh: Brightness", "Within-Marsh: NDVI","Within-Marsh: Global",
+               "Between-Marsh","Global")
 #For presence
 summ.table <- do.call(rbind, lapply(mod_list_pres, broom::glance))
-mod_tab_p<-ICtab(mod_list_pres, type="BIC", weights=T, delta=T,nobs=nrow(pres_dat),sort=F,mnames=model.names)
+mod_tab_p<-ICtab(mod_list_pres, type="AIC", weights=T, delta=T,nobs=nrow(pres_dat),sort=F,mnames=model.names)
 mod_tab_p[["Resid.Dev"]]<-summ.table[["deviance"]]
 mod_tab_p[["Null.Dev"]]<-summ.table[["null.deviance"]]
-mod_tab_p[["Response"]]<-rep("Placement",nrow(summ.table))
+mod_tab_p[["Response"]]<-rep("Presence",nrow(summ.table))
 mod_tab_p<-as.data.frame(mod_tab_p)%>%
   mutate(across(-Response,\(x) round(x, 2)),
          Pseudo_R2= 1-(round(Resid.Dev,4)/round(Null.Dev,4)))
 
 # for success
 summ.table <- do.call(rbind, lapply(mod_list_surv, broom::glance))
-mod_tab_s<-ICtab(mod_list_surv, type="BIC", weights=T, delta=T,nobs=nrow(surv_dat),sort=F,mnames=model.names)
+mod_tab_s<-ICtab(mod_list_surv, type="AIC", weights=T, delta=T,nobs=nrow(surv_dat),sort=F,mnames=model.names)
 mod_tab_s[["Resid.Dev"]]<-summ.table[["deviance"]]
 mod_tab_s[["Null.Dev"]]<-summ.table[["null.deviance"]]
-mod_tab_s[["Response"]]<-rep("Success",nrow(summ.table))
+mod_tab_s[["Response"]]<-rep("Fate",nrow(summ.table))
   #calculate McFaddens R2
 mod_tab_s<-as.data.frame(mod_tab_s)%>%
   mutate(across(-Response,\(x) round(x, 2)),
          Pseudo_R2= 1-(round(Resid.Dev,4)/round(Null.Dev,4)))
 
 mod_tab<-rbind(mod_tab_p,mod_tab_s)%>%
-  arrange(Response,dBIC)
+  arrange(Response,dAIC)
 
 
 
-if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_5_15_24.csv"))){
-write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_5_15_24.csv"))
+if(!file.exists(paste0(path_out,"Final_outputs/Model_Results/model_selection_table_2_13_25.csv"))){
+write.csv(mod_tab,paste0(path_out,"Final_outputs/Model_Results/model_selection_table_2_13_25.csv"))
 }
 
 
-# select the top ranked model based on BIC
+# select the top ranked model based on AIC
   # presence models
 mod_pres<-mod_list_pres[[#in the list of models
   which( #select the index of the model that
-    model.names%in%row.names(mod_tab[mod_tab$dBIC==0 & mod_tab$Response=="Placement",])# is has the model name as the row with the lowest BIC for presence
+    model.names%in%row.names(mod_tab[mod_tab$dAIC==0 & mod_tab$Response=="Presence",])# is has the model name as the row with the lowest AIC for presence
     )
   ]]
 form_pres<-deparse1(mod_pres$formula)# use deparse1 to turn the formula into a string
 
   # repeat for the success models
-mod_surv<-mod_list_surv[[which(model.names%in%str_sub(row.names(mod_tab[mod_tab$dBIC==0 & mod_tab$Response=="Success",]),end=-2))]]
+mod_surv<-mod_list_surv[[which(model.names%in%str_sub(row.names(mod_tab[mod_tab$dAIC==0 & mod_tab$Response=="Fate",]),end=-2))]]
 form_surv<-deparse1(mod_surv$formula)
 
 
