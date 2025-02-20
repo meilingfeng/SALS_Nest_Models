@@ -43,10 +43,10 @@ summary(mod_list_surv[[9]])
 
 #format the coefficients and confidence intervals and plot
 
-#ggcoef_table(mod_list_pres[[9]],exponentiate = T)
+ggcoef_table(mod_list_pres[[9]],exponentiate = T)
 #ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_pres_coefs.png"), width = 10, height = 7, dpi = "retina")
 
-#ggcoef_table(mod_list_surv[[9]],exponentiate = T)
+ggcoef_table(mod_list_surv[[9]],exponentiate = T)
 #ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_surv_coefs.png"), width = 10, height = 7, dpi = "retina")
 
 
