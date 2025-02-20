@@ -41,15 +41,17 @@ d.surv<-list() #list of dfs for each fold for predicting nest survival
 for(i in 1:k){
   set.seed(123)
   #since training and testing datasets are of different lengths depending on the method, randomly sample the same amount of predictions
-d.pres[[i]]<-cbind(d.pres.brt[[i]],
-                   d.pres.mxt[[i]][,3],
-                   d.pres.glm[[i]][,3])%>%
-  rename("Maxent"="d.pres.mxt[[i]][, 3]","GLM"="d.pres.glm[[i]][, 3]","BRTs"="pred")
+n_rows<-min(nrow(d.pres.brt[[i]]),nrow(d.pres.mxt[[i]]),nrow(d.pres.glm[[i]]))
+d.pres[[i]]<-cbind(d.pres.brt[[i]][sample(nrow(d.pres.brt[[i]]),n_rows,replace = F),],
+                   d.pres.mxt[[i]][sample(nrow(d.pres.mxt[[i]]),n_rows,replace = F),3],
+                   d.pres.glm[[i]][sample(nrow(d.pres.glm[[i]]),n_rows,replace = F),3])%>%
+  rename("Maxent"="d.pres.mxt[[i]][sample(nrow(d.pres.mxt[[i]]), n_rows, replace = F), ","GLM"="d.pres.glm[[i]][sample(nrow(d.pres.glm[[i]]), n_rows, replace = F), ","BRTs"="pred")
 
-d.surv[[i]]<-cbind(d.surv.brt[[i]],
-                   d.surv.mxt[[i]][,3],
-                   d.surv.glm[[i]][,3])%>%
-  rename("Maxent"="d.surv.mxt[[i]][, 3]","GLM"="d.surv.glm[[i]][, 3]","BRTs"="pred")
+n_rows<-min(nrow(d.surv.brt[[i]]),nrow(d.surv.mxt[[i]]),nrow(d.surv.glm[[i]]))
+d.surv[[i]]<-cbind(d.surv.brt[[i]][sample(nrow(d.surv.brt[[i]]),n_rows,replace = F),],
+                   d.surv.mxt[[i]][sample(nrow(d.surv.mxt[[i]]),n_rows,replace = F),3],
+                   d.surv.glm[[i]][sample(nrow(d.surv.glm[[i]]),n_rows,replace = F),3])%>%
+  rename("Maxent"="d.surv.mxt[[i]][sample(nrow(d.surv.mxt[[i]]), n_rows, replace = F), ","GLM"="d.surv.glm[[i]][sample(nrow(d.surv.glm[[i]]), n_rows, replace = F), ","BRTs"="pred")
 }
 
 }else{
@@ -217,7 +219,7 @@ for (i in 1:length(model.names)){ #for each model
 
 }
 
-write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_5_16_24.csv"), row.names = F)
+write.csv(eval.tab,paste0(path_out,"Final_outputs/Model_Results/model_evaluation_table_2_16_25.csv"), row.names = F)
 
 
 # BRT has the best performance across all metrics. 
@@ -293,8 +295,8 @@ disc_p_regions<-ggplot(pres_regions,aes(BRTs,color=as.factor(y),fill=as.factor(y
   facet_wrap(~region,scales = "free")
 disc_p_regions+plot_annotation(title="BRT Nest Site Discrimination by Region")
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_pres_brt.jpeg"),
-       width=8,height=8,dpi=300,units = "in")
+#ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_pres_brt.jpeg"),
+#       width=8,height=8,dpi=300,units = "in")
 
 
 
@@ -362,8 +364,8 @@ disc_s_regions<-ggplot(surv_regions,aes(BRTs,color=y,fill=y))+
   facet_wrap(~region,scales = "free")
 disc_s_regions+plot_annotation(title="BRT Nest Survival Discrimination by Region")
 
-ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_surv_brt.jpeg"),
-       width=8,height=8,dpi=300,units = "in")
+#ggsave(paste0(path_out,"Final_outputs/Model_Results/discrim_region_plots_surv_brt.jpeg"),
+#       width=8,height=8,dpi=300,units = "in")
 
 
 #AUC plots
