@@ -3,7 +3,7 @@ library(terra)
 library(sf)
 
 ########
-#sample nest precitions at demo veg sites
+# generate nest predictions at SHARP survey veg sites
 #############
 
 zones<-c(2:6)
