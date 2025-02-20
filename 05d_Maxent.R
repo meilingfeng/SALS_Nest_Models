@@ -4,16 +4,22 @@ library(patchwork)
 # test if you can use maxent 
 maxent()
 
-### Set up -This analysis is for SALS only. The intent was to test which method had better prediction and we used that method (BRTs) for all other species.
+### Set up 
 # -------------------------------------------
+
+#if running all species, set sals_only to FALSE.
+if(sals_only==T){
+  speciesnames<-c("SALS")
+}else{
+  speciesnames<-c("SALS","SESP","CLRA","WILL","NESP")
+}
+
 #Load and tidy occurrence data
 
 all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff","elevation") 
 
-pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_pres_ML_dat.csv"))
-pres_dat<-pres_dat[complete.cases(pres_dat[,c(all_terms,"latitude","doy")]),]
-surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/SALS_nest_fate_ML_dat.csv"))
-surv_dat<-surv_dat[complete.cases(surv_dat[,c(all_terms,"latitude","doy","time_since_tide","Year")]),]
+pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_dat.csv"))
+surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_dat.csv"))
 
 if(build==T){
 # select all predictors and response
@@ -42,10 +48,10 @@ for(i in 1:k){
 
 ### Fit model
 #------------------------------------------------------------
-  me_p <- maxent(dplyr::select(pres_dat_train,all_of(all_terms)), # predictors (to fit categorical variables, indicate them using ",factors='variablename'")
+  me_p <- maxent(dplyr::select(pres_dat_train,c("latitude","doy",all_of(all_terms))), # predictors (to fit categorical variables, indicate them using ",factors='variablename'")
                  dplyr::select(pres_dat_train,y)) # occurrences
   
-  me_s <- maxent(dplyr::select(surv_dat_train,all_of(all_terms)), 
+  me_s <- maxent(dplyr::select(surv_dat_train,c("Year","time_since_tide","latitude","doy",all_of(all_terms))), 
                  dplyr::select(surv_dat_train,y))
   
 
@@ -57,10 +63,10 @@ for(i in 1:k){
   # create df of test observations and predictions to evaluate model performance
   d.pres.mxt[[i]] <- data.frame(id=pres_dat2[pres_dat2$group==i,]$id,
                             obs=pres_dat_test$y, 
-                            pred=predict(me_p, dplyr::select(pres_dat_test,all_of(all_terms))))
+                            pred=predict(me_p, dplyr::select(pres_dat_test,c("latitude","doy",all_of(all_terms)))))
   d.surv.mxt[[i]] <- data.frame(id=surv_dat2[surv_dat2$group==i,]$id,
                             obs=surv_dat_test$y, 
-                            pred=predict(me_s, dplyr::select(surv_dat_test,all_of(all_terms))))
+                            pred=predict(me_s, dplyr::select(surv_dat_test,c("Year","time_since_tide","latitude","doy",all_of(all_terms)))))
   
   
   
