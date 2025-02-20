@@ -24,16 +24,20 @@ speciesnames<-c("SALS","SESP","CLRA","WILL","NESP")
 
 for (j in 1:length(speciesnames)){
 nests_buff<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/",speciesnames[j],"_nest_pres_bg_buff.shp"))
-nests<-st_read(paste0(path_out,"Intermediate_outputs/Nest_locations/",speciesnames[j],"_nest_pres_bg_points.shp"))
   
 #list for the 8 region outputs
 out_list<-list()
 
+#constants for area calculations
+area_pix<-round(res(vg_cls[[1]])[1]^2)
+area_buff<-as.numeric(st_area(nests_buff)[1])#30m diameter circle (15m buff)
+
 ## Summarize predictors in buffers
 #---------------------------------------------------
+#*exact_extract returns cells from the raster that are covered by the polygons. It won't return values for polygons that don't overlap the RS data.
+#
 ## a. Marsh Vegetation Classes
 #-------------------------------
-area<-round(res(vg_cls[[1]])[1]^2)
 #for each regional zone (1-8) along the east coast...
 for(i in 1:length(vg_cls)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
@@ -42,38 +46,41 @@ for(i in 1:length(vg_cls)) {
                                summarize_df=T,include_cols='id')%>%
     #convert cell count to area by multiplying count by cell area. 
     #then calculate the proportional area of each veg class
-    group_by(id)%>%
-    mutate(area=n*area,
-           prop_area=round(area/sum(area),digits=2),
+    mutate(area=n*area_pix,
+           prop_area=round(area/area_buff,digits=3),
+           #this will generate accurate region assignments for locations (use these)
            region=zones[i])%>%
     ungroup()%>%
     #join additional attributes
-    left_join(nests%>%st_drop_geometry(),by='id')%>%
     left_join(veg_class,by="value")%>%
     dplyr::select(-c("value","area","n"))%>%
-    distinct(id,prop_area,veg_class,.keep_all=T)%>%
     pivot_wider(names_from= "veg_class",values_from = "prop_area")%>%
-    unnest() #removes list cols
+    # if a location only has "NA" as a cover class, remove. Those locations are outside the marsh area for this region.
+    filter(!if_all(contains(veg_class$veg_class),is.na))%>%
+    # if the table has an NA column, remove
+    dplyr::select(id,region,contains(veg_class$veg_class))%>% 
+    #assign 0's to veg classes that are absent from nest buffers in marsh area
+    replace(is.na(.), 0)
 }
 
 #empty region dataframes indicate no nests in that region
-# align columns across dataframes 
-nms <- veg_class$veg_class   # Vector of columns you want in the data.frames (the names of each vegetation class)
-nms<-c(nms,"NA") #NA indicates outside of marsh area (no vegetation class within nest buffer)
 
+# Make sure locations in all regions have all veg classes sampled 
+# Vector of columns you want in the data.frames (the names of each vegetation class)
+nms <- veg_class$veg_class   
+# if a DF is missing a veg class, it didn't appear at any locations in that region. Add the class and fill with zero % cover.
 for(i in 1:length(out_list)){
-  
-  Missing <- setdiff(nms, names(out_list[[i]]))  # Find names of missing columns by comparing dataframe columns to vector of desired column names
-  out_list[[i]][Missing] <- 0                    # Add missing columns, fill observations with '0's (0% cover)
+  # Find names of missing columns by comparing dataframe columns to vector of desired column names  
+  Missing <- setdiff(nms, names(out_list[[i]]))  
+  # Add missing columns, fill observations with '0's (0% cover)
+  out_list[[i]][Missing] <- 0                    
   
 }
 
 #combine vegetation values for nests across all regions into 1 dataframe
 veg_prop<-do.call("rbind",out_list)%>%
+  # some points overlap marsh area in two regions (rasters overlap). Just pick the values from one region.
   distinct(id,.keep_all=T)
-#rename the "NA" vegetation variable column (last column) to "MISSING"
-colnames(veg_prop)[(ncol(veg_prop))]<-"MISSING"
-
 
 
 
@@ -83,7 +90,9 @@ uvvr_mean<-exact_extract(uvvr, st_transform(nests_buff,crs(uvvr)), #set coord sy
                          function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                          summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
-uvvr_mean<-group_by(uvvr_mean,id)%>%
+uvvr_mean2<-group_by(uvvr_mean,id)%>%
+  #remove locations within raster layer extent but not in marsh area.
+  filter(!(is.nan(value)|is.na(value)))%>%
   mutate(n=n/sum(n,na.rm=T),
          weighted=n*value)%>%
   summarise(uvvr_mean=round(sum(weighted,na.rm=T),digits=5))%>%
@@ -97,6 +106,8 @@ uvvr_diff2<-exact_extract(uvvr_diff, st_transform(nests_buff,crs(uvvr_diff)), #s
                           summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
 uvvr_diff2<-group_by(uvvr_diff2,id)%>%
+  #remove locations within raster layer extent but not in marsh area.
+  filter(!(is.nan(value)|is.na(value)))%>%
   mutate(n=n/sum(n,na.rm=T),
          weighted=n*value)%>%
   summarise(uvvr_diff=round(sum(weighted,na.rm=T),digits=5))%>%
@@ -111,6 +122,8 @@ tideres2<-exact_extract(tideres, st_transform(nests_buff,crs(tideres)),
                         summarize_df=T,include_cols='id')
 #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
 tideres2<-group_by(tideres2,id)%>%
+  #remove locations within raster layer extent but not in marsh area.
+  filter(!(is.nan(value)|is.na(value)))%>%
   mutate(n=n/sum(n,na.rm=T),
          weighted=n*value)%>%
   summarise(tideres=round(sum(weighted,na.rm=T),digits=5))%>%
@@ -125,17 +138,20 @@ for(i in 1:length(ndvi)) {
   #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
   out_list[[i]]<-exact_extract(ndvi[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
                                summarize_df=T,include_cols='id')%>%
-    #convert cell coverage to weighted average by multiplying count fraction by value and summing the weighted values in each nest buffer(id)
-    group_by(id)%>%
-    mutate(n=n/sum(n,na.rm=T),
-           weighted=n*value)%>%
-    summarise(ndvi=round(sum(weighted,na.rm=T),digits=5))%>%
-    ungroup()
+      group_by(id)%>%
+      #remove locations within raster layer extent but not in this region's marsh area.
+      filter(!(is.nan(value)|is.na(value)))%>%
+      #convert cell coverage to weighted average by multiplying count fraction by value and summing the weighted values in each nest buffer(id)
+      mutate(n2=n/sum(n,na.rm=T),
+           weighted=n2*value)%>%
+      summarise(ndvi=round(sum(weighted,na.rm=T),digits=5))%>%
+      ungroup()
 }
 
-#empty region dataframes indicate no SALS nests in that region
+#empty region dataframes indicate no nests in that region
 #combine values for nests across all regions into 1 dataframe
 ndvi_buff<-do.call("rbind",out_list)%>%
+  # some points overlap marsh area in two regions (rasters overlap). Just pick the values from one region.
   distinct(id,.keep_all=T)
 
 
@@ -149,63 +165,23 @@ for(i in 1:length(pca)) {
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
+  #remove locations within raster layer extent but not in this region's marsh area.
+  filter(!(is.nan(value)|is.na(value)))%>%
     mutate(n=n/sum(n,na.rm=T),
            weighted=n*value)%>%
     summarise(pca=round(sum(weighted,na.rm=T),digits=5))%>%
     ungroup()
 }
 
-#empty region dataframes indicate no SALS nests in that region
+#empty region dataframes indicate no nests in that region
 #combine values for nests across all regions into 1 dataframe
 pca_buff<-do.call("rbind",out_list)%>%
+  # some points overlap marsh area in two regions (rasters overlap). Just pick the values from one region.
   distinct(id,.keep_all=T)
 
 
 
-
-## g. Entropy
-#-------------------------------
-#for each regional zone (1-8) along the east coast...
-for(i in 1:length(ndvi)) {
-  #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(txt_entro[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
-                               summarize_df=T,include_cols='id')%>%
-    #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
-    group_by(id)%>%
-    mutate(n=n/sum(n,na.rm=T),
-           weighted=n*value)%>%
-    summarise(ent_txt=round(sum(weighted,na.rm=T),digits=5))%>%
-    ungroup()
-}
-
-#empty region dataframes indicate no SALS nests in that region
-#combine values for nests across all regions into 1 dataframe
-entro_buff<-do.call("rbind",out_list)%>%
-  distinct(id,.keep_all=T)
-
-
-
-## h. Correlation
-#-------------------------------
-#for each regional zone (1-8) along the east coast...
-for(i in 1:length(ndvi)) {
-  #summarize the number of cells weighted by proportion of coverage within each nest buffer (coverage fraction)
-  out_list[[i]]<-exact_extract(txt_corr[[i]], st_transform(nests_buff,crs(ndvi[[1]])), function(df) summarize(group_by(df,value,id),n=sum(coverage_fraction),.groups='drop'),
-                               summarize_df=T,include_cols='id')%>%
-    #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
-    group_by(id)%>%
-    mutate(n=n/sum(n,na.rm=T),
-           weighted=n*value)%>%
-    summarise(cor_txt=round(sum(weighted,na.rm=T),digits=5))%>%
-    ungroup()
-}
-
-#empty region dataframes indicate no SALS nests in that region
-#combine values for nests across all regions into 1 dataframe
-corr_buff<-do.call("rbind",out_list)%>%
-  distinct(id,.keep_all=T)
-
-## i. Elevation
+## f. Elevation
 #-------------------------------
 
 #for each regional zone (1-8) along the east coast...
@@ -215,33 +191,37 @@ for(i in 1:length(dem)) {
                                summarize_df=T,include_cols='id')%>%
     #convert cell coverage to weighted average by multiplying count by value and summing the weighted values in each nest buffer(id)
     group_by(id)%>%
+    #remove locations within raster layer extent but not in this region's marsh area.
+    filter(!(is.nan(value)|is.na(value)))%>%
     mutate(n=n/sum(n,na.rm=T),
            weighted=n*value)%>%
     summarise(elevation=round(sum(weighted,na.rm=T),digits=5))%>%
     ungroup()
 }
 
-#empty region dataframes indicate no SALS nests in that region
+#empty region dataframes indicate no nests in that region
 #combine values for nests across all regions into 1 dataframe
 dem_buff<-do.call("rbind",out_list)%>%
+  # some points overlap marsh area in two regions (rasters overlap). Just pick the values from one region.
   distinct(id,.keep_all=T)
 
 
-## i. join UVVR and Proportion of vegetation classes in each nest buffer into 1 table
+## g. join UVVR and Proportion of vegetation classes in each nest buffer into 1 table
 #-------------------------------
-final_dat<-left_join(veg_prop,uvvr_mean, by='id')%>%
+# joing back to the original nest location table. Any locations without information in the raster extraction tables
+  # should come back as NA- these are true missing values (do not replace with 0)
+final_dat<-left_join(nests_buff,veg_prop,by='id')%>%
+  left_join(uvvr_mean2, by='id')%>%
   left_join(uvvr_diff2,by='id')%>%
   left_join(ndvi_buff,by='id')%>%
   left_join(pca_buff,by='id')%>%
-  left_join(entro_buff,by='id')%>%
-  left_join(corr_buff,by='id')%>%
   left_join(dem_buff,by='id')%>%
   left_join(tideres2,by='id')%>%
   dplyr::select(id,bp,region,site,Year,fate, 
-                HIMARSH,LOMARSH,POOL,PHRG,MISSING,STRM,MUD,UPLND,TERRBRD,
+                HIMARSH,LOMARSH,POOL,PHRG,STRM,MUD,UPLND,TERRBRD,
                 uvvr_mean,uvvr_diff, tideres,
-                ndvi,pca,ent_txt,cor_txt,elevation)%>%
-  distinct(id,.keep_all=T)
+                ndvi,pca,elevation)%>%
+  st_drop_geometry()
 
 #save(uvvr_mean,uvvr_diff2,ndvi_buff,pca_buff,entro_buff,corr_buff, file=paste0(path_out,"Final_outputs/4c_final_files.rds"))
 write.csv(final_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_vars_buff15.csv"),row.names = F)
