@@ -25,57 +25,38 @@ all_terms<-c("uvvr_mean","ndvi","pca","HIMARSH","LOMARSH", "tideres", "uvvr_diff
 
 ## Load nest observation datasets with predictor variables
 for (j in 1:length(speciesnames)){
-  # predictors at nest location point
-  dat_point<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_vars_local.csv"))%>%
-    dplyr::select(id,site,Year,bp,tideres)
-  
-  
-  # buffered predictors - measures summarized within a 30 m buffer of nest
-  dat_buff<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_vars_buff15.csv"))%>%
-    dplyr::select(id,site,Year,bp,uvvr_mean,ndvi,pca,HIMARSH,LOMARSH,uvvr_diff,elevation)
-  
-  #combine point and buffer variables
-  dat<-left_join(dat_point,dat_buff,by=c("id","site","Year","bp"))%>%
-    mutate(presence=ifelse(bp=="p",1,0))%>%
+  # buffered predictors - summarized within a 15m radius of nest
+  dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_vars_buff15.csv"))%>%
+    dplyr::select(id,site,Year,bp,region,fate,all_of(all_terms))%>%
+    mutate(presence=ifelse(bp=="p",1,0),
+           fate=case_when(
+             fate=="FLEDGED"~1,
+             fate%in%c("DEPREDATED","FAIL UNKNOWN","FLOODED")~0,
+             is.na(fate)|!(fate%in%c("DEPREDATED","FLEDGED","FAIL UNKNOWN","FLOODED"))~NA))%>%
     dplyr::select(-bp)
   
-  #add fate variable, geographic region/zone, latitude
-  fates<-read.csv(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_nests2024_regions.csv"))%>%
-    dplyr::select(id,fate,Region)%>%
-    mutate(fate=case_when(
-      fate=="FLEDGED"~1,
-      fate%in%c("DEPREDATED","FLEDGED","FAIL UNKNOWN","FLOODED")~0,
-      is.na(fate)|!(fate%in%c("DEPREDATED","FLEDGED","FAIL UNKNOWN","FLOODED"))~NA))%>%
-    distinct(id,.keep_all = T)
-  lat<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_valid_nest_locations_2010_2024.shp"))%>%
+  
+  #add fate and latitude
+  nest_lat<-st_read(paste0(path_out,"Final_outputs/Nest_locations/",speciesnames[j],"_valid_nest_locations_2010_2024.shp"))%>%
     st_transform("EPSG:4269")%>%
     dplyr::mutate(latitude = sf::st_coordinates(.)[,2],
                   longitude = sf::st_coordinates(.)[,1])%>%
     dplyr::select(id,latitude,longitude)
-  fates<-fates%>%
-    left_join(lat,by="id")
-  
-  bg_regions<-read.csv(paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m_01_31_2025.csv"))%>%
+  bg_lat<-read.csv(paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m_01_31_2025.csv"))%>%
     st_as_sf(coords=c("x","y"),crs="EPSG:26918")%>%
     st_transform("EPSG:4269")%>%
     dplyr::mutate(latitude = sf::st_coordinates(.)[,2],
                   longitude = sf::st_coordinates(.)[,1])%>%
-    dplyr::select(id,Region,latitude,longitude)%>%
-    mutate(fate=NA)
+    dplyr::select(id,latitude,longitude)
 
-  fates<-rbind(fates,bg_regions)
-  
+  lat<-rbind(lat,bg_lat)
   
   dat<-dat%>%
-    left_join(fates,by="id")%>%
+    left_join(lat,by="id")%>%
     dplyr::select(-geometry)
-  
-  # replace NA land cover proportions with 0 
-  dat[,c("HIMARSH","LOMARSH")]<-dat[,c("HIMARSH","LOMARSH")]%>%
-    replace(is.na(.),0)
-  
-  
 
+  
+  
   
 ### Add some additional nuisance variables for GLMs
 #--------------------------------------------------------------------------
@@ -102,10 +83,10 @@ dat3<-dat2%>%
 date_order<-list()
 
     # draw random index numbers for all the nest initiation dates in each region
-regions<-sort(unique(dat3[dat3$presence==1,]$Region))
+regions<-sort(unique(dat3[dat3$presence==1,]$region))
 for(i in 1:length(regions)){
-  date_order[[i]]<-sample(which(dat3$presence==1&!is.na(dat3$init_date)&dat3$Region==regions[[i]]),
-                          nrow(dat3[dat3$presence==0 & dat3$Region==regions[[i]], ]),
+  date_order[[i]]<-sample(which(dat3$presence==1&!is.na(dat3$init_date)&dat3$region==regions[[i]]),
+                          nrow(dat3[dat3$presence==0 & dat3$region==regions[[i]], ]),
                           replace = T)
   
   dates<-vector()
@@ -114,7 +95,7 @@ for(i in 1:length(regions)){
   dates[k]<-dat3$init_date[date_order[[i]][k]]
   }
   
-  dat3[dat3$presence==0 & dat3$Region==regions[[i]], ]$init_date<-dates
+  dat3[dat3$presence==0 & dat3$region==regions[[i]], ]$init_date<-dates
 }
 
 
@@ -130,11 +111,11 @@ dat3<-dat3%>%
 
 
   
-### Filter for complete records (necessary for GLMs)
+### Filter for complete records (necessary for GLMs and Maxent)
 #--------------------------------------------------------------------------------
   # filter for remote sensing data
   dat_comp<-dat3[complete.cases(dat3[,all_terms]),]
-  nrow(dat3[!(dat3$id%in%dat_comp$id),]) #removes 380 background points
+  nrow(dat3[!(dat3$id%in%dat_comp$id),]) #removes 512 background points
 
 
   #remove nest records without initiation dates. 
@@ -146,17 +127,12 @@ dat3<-dat3%>%
   
 ###  Divide observations into nest presence and nest survival datasets
 #----------------------------------------------------------------------------------
-  #for GLM methods (N=5625 presence data (2949 nest locations) and N= 2613 fate data) 
+  #N=5493 presence data (2949 nest locations) and N= 2613 fate data
   #(only nest records removed are those without monitoring data/initiation dates)
   pres_dat<-dat_comp2
   sum(pres_dat$presence)
   surv_dat<-dat_comp2[!is.na(dat_comp2$fate),] #filter just the nests with known fates
   surv_dat<-surv_dat[!(is.na(surv_dat$time_since_tide)),]
-  
-  #for the ML methods (N=6080 presence data (3024 nest locations) and N= 2678 fate data)
-  pres_dat_ml<-dat3
-  sum(pres_dat_ml$presence)
-  surv_dat_ml<-dat3[!is.na(dat3$fate),]
   
   
   
@@ -166,26 +142,23 @@ dat3<-dat3%>%
   # nest successes vs fails 
   # complete data (GLMs) (For SALS- 1660:953, 0.36 prevalence of success, total records =2613)
   addmargins(table(surv_dat$fate));sum(surv_dat$fate)/nrow(surv_dat)
-  # all data (ML) (For SALS 1703:975, 0.36 prevalence of success, total records =2678)
-  addmargins(table(surv_dat_ml$fate));sum(surv_dat_ml$fate)/nrow(surv_dat_ml)
   
   # nest presence to background 
-  # complete data (GLMs) (For SALS 2676b:2949p, 0.52)
+  # complete data (GLMs) (For SALS 2544b:2949p, 0.53)
   addmargins(table(pres_dat$presence)); sum(pres_dat$presence)/nrow(pres_dat)
-  #all data (ML) (For SALS 3056b:3024p, 0.50)
-  addmargins(table(pres_dat_ml$presence)); sum(pres_dat_ml$presence)/nrow(pres_dat_ml)
   
   
 
   
-### Adjust class balance (if needed)
+### Adjust class balance (if needed for nest fates)
 #---------------------------------------------------------------------------------------------
 
 # Spatially thin to balance majority class in the ML dataset if they are unbalanced
-#in general, balanced datasets are more important than maintaining true prevalence when discriminating between sites is the goal and ML approach is to be used (Steen; Barbet)
-# for GLMs data availability is comparatively more important, especially for rare species (prevalence <0.1) (Steen; Barbet), so only worry about the ML dataset
+#in general, balanced datasets are more important than maintaining true prevalence- 
+  # -when discriminating between sites is the goal and ML approach is to be used (Steen; Barbet).
+#for GLMs data availability is comparatively more important, especially for rare species (prevalence <0.1) (Steen; Barbet)
 #make sure we maintain at least 100 records of each class
-if(sum(surv_dat_ml$fate)/nrow(surv_dat_ml)<0.4&nrow(surv_dat_ml[surv_dat_ml$fate==1,])>100){
+if(sum(surv_dat$fate)/nrow(surv_dat)<0.4&nrow(surv_dat[surv_dat$fate==1,])>100){
   res_list<-c(20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
     # create a Raster Layer with the extent of nest locations
     bg<-read.csv(paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m_01_31_2025.csv"))
@@ -224,21 +197,21 @@ if(sum(surv_dat_ml$fate)/nrow(surv_dat_ml)<0.4&nrow(surv_dat_ml[surv_dat_ml$fate
     
     
     #balance survival data by filtering for the thinned record ids
-    surv_dat_ml2<-surv_dat_ml%>%
+    surv_dat2<-surv_dat%>%
       # all the successes and any fails that made it through the thinning
       filter(fate==1|id%in%fails_ss$id)
     
     # get close to 0.5 prevelance
-    if(sum(surv_dat_ml2$fate)/nrow(surv_dat_ml2)>=0.4) break()
+    if(sum(surv_dat2$fate)/nrow(surv_dat2)>=0.4) break()
     }
     
-    surv_dat_ml<-surv_dat_ml2
+    surv_dat<-surv_dat2
 }
 
-table(surv_dat_ml$fate)
+table(surv_dat$fate);sum(surv_dat$fate)/nrow(surv_dat)
 
 
-if(sum(surv_dat_ml$fate)/nrow(surv_dat_ml)>0.6&nrow(surv_dat_ml[surv_dat_ml$fate==0,])>100){
+if(sum(surv_dat$fate)/nrow(surv_dat)>0.6&nrow(surv_dat[surv_dat$fate==0,])>100){
   res_list<-c(20,25,30,35,40,45,50,55,60,65,70,75,80,85,90)
     # create a Raster Layer with the extent of nest locations
     bg<-read.csv(paste0(path_out,"Intermediate_outputs/background_points_",speciesnames[j],"_30m_01_31_2025.csv"))
@@ -248,7 +221,7 @@ if(sum(surv_dat_ml$fate)/nrow(surv_dat_ml)>0.6&nrow(surv_dat_ml[surv_dat_ml$fate
       project("EPSG:26918")%>%
       tidyterra::mutate(fate=case_when(
         fate=="FLEDGED"~1,
-        fate%in%c("DEPREDATED","FLEDGED","FAIL UNKNOWN","FLOODED")~0,
+        fate%in%c("DEPREDATED","FAIL UNKNOWN","FLOODED")~0,
         is.na(fate)|!(fate%in%c("DEPREDATED","FLEDGED","FAIL UNKNOWN","FLOODED"))~NA))
     
     
@@ -277,23 +250,23 @@ if(sum(surv_dat_ml$fate)/nrow(surv_dat_ml)>0.6&nrow(surv_dat_ml[surv_dat_ml$fate
     
     
     #balance survival data by filtering for the thinned record ids
-    surv_dat_ml2<-surv_dat_ml%>%
+    surv_dat2<-surv_dat%>%
       # all the fails and any successes that made it through the thinning
       filter(fate==0|id%in%non_fails_ss$id)
     
 
     # get close to 0.5 prevelance
-    if(sum(surv_dat_ml2$fate)/nrow(surv_dat_ml2)<=0.6) break()
+    if(sum(surv_dat2$fate)/nrow(surv_dat2)<=0.6) break()
     }
-    surv_dat_ml<-surv_dat_ml2
+    surv_dat<-surv_dat2
 }
-table(surv_dat_ml$fate)
+table(surv_dat$fate);sum(surv_dat$fate)/nrow(surv_dat)
  
   
   ## Summary of data availability after filtering and thinning/balancing
   #-----------------------------------------------------------------------------------
-  nrow(surv_dat_ml)
-  #There are 2271 nest fate observations after spatial thinning
+  nrow(surv_dat)
+  #There are 2208 nest fate observations after spatial thinning
   
   
   
@@ -308,27 +281,20 @@ table(surv_dat_ml$fate)
   set.seed(123)
   pres_dat$group<-kfold(pres_dat,k)
   surv_dat$group<-kfold(surv_dat,k)
-  pres_dat_ml$group<-kfold(pres_dat_ml,k)
-  surv_dat_ml$group<-kfold(surv_dat_ml,k)
+
   
   
   #check balance in each split dataset
   table(pres_dat$presence,pres_dat$group) # stays mostly well balanced
   table(surv_dat$fate,surv_dat$group)
-  table(pres_dat_ml$presence,pres_dat_ml$group) # stays mostly well balanced
-  table(surv_dat_ml$fate,surv_dat_ml$group)
   
   
   # set a constant response variable name
   pres_dat$y<-pres_dat$presence
   surv_dat$y<-surv_dat$fate
-  pres_dat_ml$y<-pres_dat_ml$presence
-  surv_dat_ml$y<-surv_dat_ml$fate
 
   
 
-  write.csv(pres_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_pres_GLM_dat.csv"),row.names = F)
-  write.csv(surv_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_fate_GLM_dat.csv"),row.names = F)
-  write.csv(pres_dat_ml,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_pres_ML_dat.csv"),row.names = F)
-  write.csv(surv_dat_ml,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_fate_ML_dat.csv"),row.names = F)
+  write.csv(pres_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_pres_dat.csv"),row.names = F)
+  write.csv(surv_dat,paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[j],"_nest_fate_dat.csv"),row.names = F)
 }
