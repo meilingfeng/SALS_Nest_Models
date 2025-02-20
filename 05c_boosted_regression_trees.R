@@ -24,8 +24,8 @@ speciesnames<-c("SALS","SESP","CLRA","WILL","NESP")
 }
 
 for (s in 1:length(speciesnames)){
-  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_ML_dat.csv"))
-  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_ML_dat.csv"))
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_dat.csv"))
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_dat.csv"))
       
 if(build==T){
 #Create objects to hold BRT parameters for each fold
@@ -42,10 +42,10 @@ d.surv.brt<-list()
 # select all predictors and response
 pres_dat2<-pres_dat%>%dplyr::select("id","y","group",,"latitude","doy",all_of(all_terms))%>%
   rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
-         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
+         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH, Latitude=latitude,Day.of.the.Year=doy)
 surv_dat2<-surv_dat%>%dplyr::select("id","y","group","latitude","doy","time_since_tide","Year",,all_of(all_terms))%>%
   rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
-         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
+         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH, Latitude=latitude,Day.of.the.Year=doy, Days.Since.Spring.Tide=time_since_tide)
 
 
 for(i in 1:k){
@@ -147,14 +147,16 @@ d.surv.brt[[i]] <- data.frame(id=surv_dat2[surv_dat2$group==i,]$id,
 #----------------------------------------------------------------
 if(predict.surf==T){
     
-  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_ML_dat.csv"))
-  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_ML_dat.csv"))
+  pres_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_pres_dat.csv"))
+  surv_dat<-read.csv(paste0(path_out,"Intermediate_outputs/Nest_Datasets/",speciesnames[s],"_nest_fate_dat.csv"))
   
     #Final model for nest presence
     set.seed(123)
-    pres_dat2<-pres_dat%>%dplyr::select("id","y",,"latitude","doy",all_of(all_terms))%>%
+    pres_dat2<-pres_dat%>%dplyr::select("id","y","latitude","doy",all_of(all_terms))%>%
       rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
-             Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
+             Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH, Latitude=latitude,Day.of.the.Year=doy)
+  
+    
     brt_pres<-gbm.step(data=pres_dat2[,-1], gbm.x = 2:length(pres_dat2[,-1]), gbm.y=1, 
                        family = "bernoulli",
                        tree.complexity = 5,
@@ -182,20 +184,20 @@ if(predict.surf==T){
     
     # Final model for nest survival
     set.seed(123)
-    surv_dat2<-surv_dat%>%dplyr::select("id","y",,"latitude","doy","time_since_tide","Year",all_of(all_terms))%>%
+    surv_dat2<-surv_dat%>%dplyr::select("id","y","latitude","doy","time_since_tide","Year",,all_of(all_terms))%>%
       rename(Elevation=elevation,NDVI=ndvi,Tidal.Restriction=tideres, Surface.Brightness=pca, Change.in.UVVR=uvvr_diff, Mean.UVVR=uvvr_mean,
-             Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH)
+             Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH, Latitude=latitude,Day.of.the.Year=doy, Days.Since.Spring.Tide=time_since_tide)
     brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
                        family = "bernoulli",
                        tree.complexity = 5,
-                       learning.rate=0.005)
+                       learning.rate=0.01)
     
     # start at lr of 0.05, decrease until optimal trees hits 1000
     if(brt_surv$gbm.call$best.trees<1000||length(brt_surv)==0){
       brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
                          family = "bernoulli",
                          tree.complexity = 5,
-                         learning.rate=0.001)
+                         learning.rate=0.005)
     }
       if(brt_surv$gbm.call$best.trees<1000||length(brt_surv)==0){
         brt_surv<-gbm.step(data=surv_dat2[,-1], gbm.x = 2:length(surv_dat2[,-1]), gbm.y=1, 
@@ -208,19 +210,19 @@ if(predict.surf==T){
     
     
 # list the optimal number of trees and lr for the final models
-brt_pres$gbm.call$best.trees #1750
-brt_surv$gbm.call$best.trees #2700
+brt_pres$gbm.call$best.trees #1900
+brt_surv$gbm.call$best.trees #1300
 
 brt_pres$gbm.call$learning.rate    #0.05
-brt_surv$gbm.call$learning.rate    #0.001
+brt_surv$gbm.call$learning.rate    #0.005
 
     
     
 # save final models and their thresholds
     #plot fitted values against predictor
-gbm.plot(brt_pres, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T) #, continuous.resolution=100, type="response"
+gbm.plot(brt_pres, n.plots=10, plot.layout=c(3, 4), write.title = FALSE, smooth=T) #, continuous.resolution=100, type="response"
 
-gbm.plot(brt_surv, n.plots=8, plot.layout=c(2, 4), write.title = FALSE, smooth=T)
+gbm.plot(brt_surv, n.plots=12, plot.layout=c(3, 4), write.title = FALSE, smooth=T)
 
     
       # get thresholds
