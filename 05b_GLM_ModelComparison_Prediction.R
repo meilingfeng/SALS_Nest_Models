@@ -4,6 +4,7 @@ library(AICcmodavg)
 library(bbmle)
 library(broom)
 library(ggstats)
+library(patchwork)
 
 ### Set up
 # -------------------------------------------
@@ -41,13 +42,6 @@ summary(mod_list_surv[[9]])
 
 
 
-#format the coefficients and confidence intervals and plot
-
-ggcoef_table(mod_list_pres[[9]],exponentiate = T)
-#ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_pres_coefs.png"), width = 10, height = 7, dpi = "retina")
-
-ggcoef_table(mod_list_surv[[9]],exponentiate = T)
-#ggsave(filename=paste0(path_out,"Intermediate_outputs/Data_Model_Exploration/glm_surv_coefs.png"), width = 10, height = 7, dpi = "retina")
 
 
 
@@ -106,6 +100,103 @@ form_pres<-deparse1(mod_pres$formula)# use deparse1 to turn the formula into a s
   # repeat for the success models
 mod_surv<-mod_list_surv[[which(model.names%in%str_sub(row.names(mod_tab[mod_tab$dAIC==0 & mod_tab$Response=="Fate",]),end=-2))]]
 form_surv<-deparse1(mod_surv$formula)
+
+
+
+# Interpret coefs
+t<-data.frame(var=names(summary(mod_pres)$coefficients[,1]),
+              coef=as.numeric(summary(mod_pres)$coefficients[,1]),
+              se=summary(mod_pres)$coefficients[,2])
+t2<-t%>%
+  filter(var!="(Intercept)")%>%
+  mutate(u.l.change=-(1-exp(coef+(1.95*se))),
+         l.l.change=-(1-exp(coef-(1.95*se))),
+         odds=exp(coef),
+         change.odds=-(1-odds))
+
+t3<-t%>%
+  filter(var=="(Intercept)")%>%
+  mutate(u.l.change=exp(coef+(1.95*se))/(1+exp(coef+(1.95*se))),
+         l.l.change=exp(coef-(1.95*se))/(1+exp(coef+(1.95*se))),
+         odds=exp(coef),
+         change.odds=odds/(1+odds))#this is probability transformation
+t4<-rbind(t3,t2)
+
+write.csv(t4,paste0(path_out,"Final_outputs/Model_Results/pres_GML_coefs_2_13_25.csv"),row.names = F)
+
+t<-data.frame(var=names(summary(mod_surv)$coefficients[,1]),
+              coef=as.numeric(summary(mod_surv)$coefficients[,1]),
+              se=summary(mod_surv)$coefficients[,2])
+t2<-t%>%
+  filter(var!="(Intercept)")%>%
+  mutate(u.l.change=-(1-exp(coef+(1.95*se))),
+         l.l.change=-(1-exp(coef-(1.95*se))),
+         odds=exp(coef),
+         change.odds=-(1-odds))
+
+t3<-t%>%
+  filter(var=="(Intercept)")%>%
+  mutate(u.l.change=exp(coef+(1.95*se))/(1+exp(coef+(1.95*se))),
+         l.l.change=exp(coef-(1.95*se))/(1+exp(coef+(1.95*se))),
+         odds=exp(coef),
+         change.odds=odds/(1+odds))#this is probability transformation
+t4<-rbind(t3,t2)
+write.csv(t4,paste0(path_out,"Final_outputs/Model_Results/surv_GML_coefs_2_13_25.csv"),row.names = F)
+
+
+
+
+#format the coefficients and confidence intervals and plot
+p1<-ggcoef_table(mod_pres,exponentiate = T, table_stat = c("estimate", "ci"), significance=NULL,
+             colour = NULL, stripped_rows = FALSE,
+             table_stat_label = list(
+                  estimate = scales::label_number(.01)),
+             table_witdhs = c(2, 0.5),
+             #table_text_size = 6,
+  variable_labels = c(
+    log.uvvr_mean = "Log(Mean UVVR)",
+    uvvr_diff = "Change in UVVR",
+    log.tideres = "Log(Tidal Restriction)",
+    log.uvvr_mean = "Log(Mean UVVR)",
+    `elevation, 2` = "Elevation",
+    `log.ndvi, 2` = "Log(NDVI)",
+    pca_c = "Surface Brightness",
+    HIMARSH = "Proportion High Marsh",
+    log.LOMARSH = "Proportion Low Marsh",
+    doy_c = "Day of Year",
+    `latitude_c, 2`="Latitude"
+  ),
+  facet_labeller = ggplot2::label_wrap_gen(20)
+)
+ggsave(filename=paste0(path_out,"Final_outputs/Model_Results/glm_pres_coefs.png"), width = 8, height = 8, dpi = "retina")
+
+p2<-ggcoef_table(mod_surv,exponentiate = T, table_stat = c("estimate", "ci"), significance=NULL,
+             colour = NULL, stripped_rows = FALSE,
+             table_stat_label = list(
+               estimate = scales::label_number(.01)),
+             table_witdhs = c(2, 0.5),
+             #table_text_size = 6,
+             variable_labels = c(
+               log.uvvr_mean = "Log(Mean UVVR)",
+               uvvr_diff = "Change in UVVR",
+               log.tideres = "Log(Tidal Restriction)",
+               log.uvvr_mean = "Log(Mean UVVR)",
+               `elevation` = "Elevation",
+               `log.ndvi, 2` = "Log(NDVI)",
+               pca_c = "Surface Brightness",
+               HIMARSH = "Proportion High Marsh",
+               log.LOMARSH = "Proportion Low Marsh",
+               doy_c = "Day of Year",
+               `latitude_c, 2`="Latitude",
+               Year_c="Year",
+               time_since_tide_c="Days Since Spring Tide"
+             ),
+             facet_labeller = ggplot2::label_wrap_gen(20)
+)
+
+(p1)/(p2)
+#ggsave(filename=paste0(path_out,"Final_outputs/Model_Results/glm_pres_surv_coefs.png"), width = 8, height = 15, dpi = "retina")
+
 
 
 
