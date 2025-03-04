@@ -16,11 +16,17 @@ dat_path<-"D:/Nest_Models/Data/"
 path_out<-"D:/Nest_Models/Outputs/"
 
 
+#make predictions at each plot location, set null variables to standard values that max presence and success
 # load vegetation survey data with covariates
 veg_data<-read.csv(paste0(path_out,"Intermediate_outputs/Survey_Vegetation/veg_buff_RS_covariates_15buff.csv"))%>%
-  dplyr::select(rowname,id,Latitude=Lat,Day.of.the.Year=doy,Mean.UVVR=uvvr_mean,NDVI=ndvi,Surface.Brightness=pca,Days.Since.Spring.Tide=time_since_tide,Year,
-         Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH,Tidal.Restriction=tideres,Change.in.UVVR=uvvr_diff,Elevation=elevation)
-length(unique(veg_data$id))#N survey plots = 3573
+  dplyr::select(id,Latitude=Lat,Day.of.the.Year=doy,Mean.UVVR=uvvr_mean,NDVI=ndvi,Surface.Brightness=pca,Days.Since.Spring.Tide=time_since_tide,Year,
+                Proportion.High.Marsh=HIMARSH,Proportion.Low.Marsh=LOMARSH,Tidal.Restriction=tideres,Change.in.UVVR=uvvr_diff,Elevation=elevation)%>%
+  #keep only one record of each location
+  distinct(id,.keep_all = T)%>%
+  #set null variables to max presence/fate based on PDP plots from BRTs 
+  # (Success increases later in the season and decreases over years. Days since tide was set to 1 in prior step.)
+  mutate(Day.of.the.Year=220,
+         Year=2011)
 
 #don't need to filter for complete observations, BRTs can predict with missing data.
 
@@ -124,39 +130,39 @@ for(i in 1:k){
       # 3. predict at veg survey sites
       #--------------------------------------
       
-      brt_predict_pres[[i]]<- predict(brt_pres, veg_data[,-c(1:2)],  
+      brt_predict_pres[[i]]<- predict(brt_pres, veg_data[,-c(1)],  
                                       n.trees=brt_pres$gbm.call$best.trees, type="response")
-      brt_predict_surv[[i]]<- predict(brt_surv, veg_data[,-c(1:2)], 
+      brt_predict_surv[[i]]<- predict(brt_surv, veg_data[,-c(1)], 
                                  n.trees=brt_surv$gbm.call$best.trees,type='response')
       # create df of test observations and predictions to evaluate model performance
-      brt_predict_pres[[i]] <- data.frame(id=veg_data$id, rowname=veg_data$rowname, pred=brt_predict_pres[[i]])%>%
+      brt_predict_pres[[i]] <- data.frame(id=veg_data$id, pred=brt_predict_pres[[i]])%>%
         rename_with(~paste0(.x,i, recycle0 = TRUE), "pred")
-      brt_predict_surv[[i]] <- data.frame(id=veg_data$id, rowname=veg_data$rowname, pred=brt_predict_surv[[i]])%>%
+      brt_predict_surv[[i]] <- data.frame(id=veg_data$id, pred=brt_predict_surv[[i]])%>%
         rename_with(~paste0(.x,i, recycle0 = TRUE), "pred")
     }
 
 brt_ci_pres<- brt_predict_pres[[1]]
-brt_ci_pres<-cbind(brt_ci_pres,do.call(cbind,lapply(brt_predict_pres[-1],function(x) x[3])))
+brt_ci_pres<-cbind(brt_ci_pres,do.call(cbind,lapply(brt_predict_pres[-1],function(x) x[2])))
 brt_ci_pres<-brt_ci_pres%>%
   pivot_longer(cols = starts_with("pred"), names_to = "iteration",values_to = "pred")%>%
-  group_by(rowname)%>%
+  group_by(id)%>%
   summarise(mean_pres_pred=mean(pred,na.rm=T),
             u.ci_pres=quantile(pred,probs = 0.975),
             l.ci_pres=quantile(pred,probs=0.025)
   )
     
 brt_ci_surv<- brt_predict_surv[[1]]
-brt_ci_surv<-cbind(brt_ci_surv,do.call(cbind,lapply(brt_predict_surv[-1],function(x) x[3])))
+brt_ci_surv<-cbind(brt_ci_surv,do.call(cbind,lapply(brt_predict_surv[-1],function(x) x[2])))
 brt_ci_surv<-brt_ci_surv%>%
   pivot_longer(cols = starts_with("pred"), names_to = "iteration",values_to = "pred")%>%
-  group_by(rowname)%>%
+  group_by(id)%>%
   summarise(mean_surv_pred=mean(pred,na.rm=T),
             u.ci_surv=quantile(pred,probs = 0.975),
             l.ci_surv=quantile(pred,probs=0.025)
   )
 veg_data2<-veg_data%>%
-  left_join(brt_ci_surv,by="rowname")%>%
-  left_join(brt_ci_pres,by="rowname")
+  left_join(brt_ci_surv,by="id")%>%
+  left_join(brt_ci_pres,by="id")
 
 
 #Then make predictions using the full model
@@ -166,13 +172,12 @@ load(paste0(path_out,"Final_outputs/Nest_Predictions/SALS_final_BRT_mods.RDS"))
 # 3. predict at veg survey sites
 #--------------------------------------
 
-veg_data2$pres_pred<- predict(brt_pres, veg_data2[,-c(1:2,15:20)],  
+veg_data2$pres_pred<- predict(brt_pres, veg_data2[,-c(1,14:19)],  
                                 n.trees=brt_pres$gbm.call$best.trees, type="response")
-veg_data2$surv_pred<- predict(brt_surv, veg_data2[,-c(1:2,15:20)], 
+veg_data2$surv_pred<- predict(brt_surv, veg_data2[,-c(1,14:19)], 
                                 n.trees=brt_surv$gbm.call$best.trees,type='response')
 
-
-write.csv(veg_data2,paste0(path_out,"Final_outputs/Survey_Veg_Predictions/rapid_veg_BRT_predictions_CIs_15buff.csv"),row.names = F)
+write.csv(veg_data2,paste0(path_out,"Final_outputs/Survey_Veg_Predictions/rapid_veg_BRT_predictions_CIs_15buff_single_plots.csv"),row.names = F)
 
   
 
