@@ -109,9 +109,9 @@ p3<-ggplot(pres_dat,aes(x=HIMARSH,y=ndvi,group=as.factor(y)))+
 
 # make ndvi and elevation quadratic and center time variables and latitude
 pres_dat<-pres_dat%>%
-  mutate(doy_c=scale(doy,center = T, scale = T),
-         latitude_c=scale(latitude,center = T, scale = T),
-         pca_c=scale(pca,center = T, scale = T),
+  mutate(doy_c=as.numeric(scale(doy,center = T, scale = T)),
+         latitude_c=as.numeric(scale(latitude,center = T, scale = T)),
+         pca_c=as.numeric(scale(pca,center = T, scale = T)),
          #log tideres, low marsh, ndvi, uvvrmean, right skewed data
          log.ndvi=log10(ndvi+0.0001),
          log.tideres=log10(tideres+0.0001),
@@ -119,12 +119,12 @@ pres_dat<-pres_dat%>%
          log.uvvr_mean=log10(uvvr_mean+0.0001))
 
 surv_dat<-surv_dat%>%
-  mutate(doy_c=scale(doy,center = T, scale = T),
-         latitude_c=scale(latitude,center = T, scale = T),
-         pca_c=scale(pca,center = T, scale = T),
+  mutate(doy_c=as.numeric(scale(doy,center = T, scale = T)),
+         latitude_c=as.numeric(scale(latitude,center = T, scale = T)),
+         pca_c=as.numeric(scale(pca,center = T, scale = T)),
          # also apply Year and time since spring tide to survival
-         time_since_tide_c=scale(time_since_tide,center = T, scale = T),
-         Year_c=scale(Year,center = T, scale = T),
+         time_since_tide_c=as.numeric(scale(time_since_tide,center = T, scale = T)),
+         Year_c=as.numeric(scale(Year,center = T, scale = T)),
          log.ndvi=log10(ndvi+0.0001),
          log.tideres=log10(tideres+0.0001),
          log.LOMARSH=log10(LOMARSH+0.0001),
@@ -166,19 +166,19 @@ mod_list_surv<-list()
 
 
 #NULL MODELS
-mod_list_pres[[1]]<-glm(y~latitude_c+doy_c, 
+mod_list_pres[[1]]<-glm(y~poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[1]]<-glm(y~latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[1]]<-glm(y~poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 #ELEVATION MODELS
 # does vegetation matter or is elevation enough to signal where nests can avoid flooding?
-mod_list_pres[[2]]<-glm(y~poly(elevation,2,raw = T)+latitude_c+doy_c, 
+mod_list_pres[[2]]<-glm(y~poly(elevation,2,raw = T)+poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[2]]<-glm(y~poly(elevation,2,raw=T)+latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[2]]<-glm(y~poly(elevation,2,raw=T)+poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
@@ -188,37 +188,37 @@ mod_list_surv[[2]]<-glm(y~poly(elevation,2,raw=T)+latitude_c+Year_c+time_since_t
 # compare a model using just proportion of high marsh + low marsh + latitude
 # low marsh is also included to give context to where high marsh is edge of the flood zone vs closer to the marsh boundary
 # marsh zones often used to delineate suitable habitat - based on elevation relative to tidal amplitude and vegetation communities
-mod_list_pres[[3]]<-glm(y~HIMARSH*LOMARSH+latitude_c+doy_c, 
+mod_list_pres[[3]]<-glm(y~HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+doy_c, 
                          data=pres_dat,
                          family = binomial(link="logit"))
-mod_list_surv[[3]]<-glm(y~HIMARSH*LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[3]]<-glm(y~HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
 #WITHIN-MARSH MODELS
 # Does nest habitat quality vary within high marsh?
 # elevation
-mod_list_pres[[4]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
+mod_list_pres[[4]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
 
-mod_list_surv[[4]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[4]]<-glm(y~HIMARSH*elevation+HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 # brightness
-mod_list_pres[[5]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
+mod_list_pres[[5]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[5]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[5]]<-glm(y~HIMARSH*pca+HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
 # NDVI
-mod_list_pres[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+latitude_c+doy_c, 
+mod_list_pres[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
@@ -226,15 +226,15 @@ mod_list_surv[[6]]<-glm(y~HIMARSH*poly(log.ndvi,2,raw=T)+HIMARSH*log.LOMARSH+lat
 mod_list_pres[[7]]<-glm(y~poly(elevation,2,raw = T)+
                           poly(log.ndvi,2,raw=T)+
                           pca_c+
-                          HIMARSH*LOMARSH+
-                          latitude_c+doy_c, 
+                          HIMARSH*log.LOMARSH+
+                          poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
 mod_list_surv[[7]]<-glm(y~poly(elevation,2,raw=T)+
                           poly(log.ndvi,2,raw=T)+
                           pca_c+
-                          HIMARSH*LOMARSH+
-                          latitude_c+Year_c+time_since_tide_c+doy_c, 
+                          HIMARSH*log.LOMARSH+
+                          poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
@@ -242,12 +242,12 @@ mod_list_surv[[7]]<-glm(y~poly(elevation,2,raw=T)+
 
 
 #BETWEEN-MARSH MODELS
-mod_list_pres[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*LOMARSH+
-                          latitude_c+doy_c, 
+mod_list_pres[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*log.LOMARSH+
+                          poly(latitude_c,2,raw = T)+doy_c, 
                         data=pres_dat,
                         family = binomial(link="logit"))
-mod_list_surv[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*LOMARSH+
-                          latitude_c+Year_c+time_since_tide_c+doy_c, 
+mod_list_surv[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*log.LOMARSH+
+                          poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                         data=surv_dat,
                         family = binomial(link="logit"))
 
@@ -256,14 +256,14 @@ mod_list_surv[[8]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+HIMARSH*LOMARSH+
 #GLOBAL MODEL
 mod_list_pres[[9]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+
                           poly(elevation,2,raw = T)+poly(log.ndvi,2,raw=T)+pca_c+
-                          HIMARSH*LOMARSH+
-                          latitude_c+doy_c, 
+                          HIMARSH*log.LOMARSH+
+                          poly(latitude_c,2,raw = T)+doy_c, 
                          data=pres_dat,
                          family = binomial(link="logit"))
 mod_list_surv[[9]]<-glm(y~log.uvvr_mean+uvvr_diff+log.tideres+
                           poly(elevation,2,raw=T)+poly(log.ndvi,2,raw=T)+pca_c+
-                          HIMARSH*LOMARSH+
-                          latitude_c+Year_c+time_since_tide_c+doy_c, 
+                          HIMARSH*log.LOMARSH+
+                          poly(latitude_c,2,raw = T)+Year_c+time_since_tide_c+doy_c, 
                          data=surv_dat,
                          family = binomial(link="logit"))
 
