@@ -44,14 +44,6 @@ rapid_dat<-read.csv(paste0(dat_path,"Survey Database/All_points_attribute_table_
 
 
 
-## 4. define function to calculate mode
-#-----------------------------------------------------
-find_mode <- function(x) {
-  u <- unique(na.omit(x))
-  tab <- tabulate(match(x, u))
-  u[tab == max(tab)]
-}
-
 
 ## 5. General data tidying
 #------------------------------------------------------------
@@ -115,8 +107,8 @@ common<-rapid_sp_sum2%>%
 common2<-mutate(common,
               #remove species that will get lumped into broader categories
               Species=case_when(
-                grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Quercus|Rhus|Rhamnus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channelAlgae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~NA,
-                !grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Carya|Quercus|Rhus|Rhamnus|Ulmus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channel|Algae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~Species
+                grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Scirpus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Scirpus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Schoenoplectus americanus|Scirpus americanus|Limonium nashii|Triglochin maritima|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Quercus|Rhus|Rhamnus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channelAlgae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~NA,
+                !grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Scirpus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Scirpus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Schoenoplectus americanus|Scirpus americanus|Limonium nashii|Triglochin maritima|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Carya|Quercus|Rhus|Rhamnus|Ulmus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channel|Algae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~Species
               ))%>%
   filter(!is.na(Species))%>%
   mutate(genus=sub("[[:space:]].*","",Species))%>%
@@ -126,8 +118,8 @@ common2<-mutate(common,
 rare2<-mutate(rare,
           #remove species that will get lumped into broader categories
        Species=case_when(
-         grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Quercus|Rhus|Rhamnus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channelAlgae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~NA,
-         !grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Carya|Quercus|Rhus|Rhamnus|Ulmus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channel|Algae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~Species
+         grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Scirpus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Scirpus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Schoenoplectus americanus|Scirpus americanus|Limonium nashii|Triglochin maritima|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Quercus|Rhus|Rhamnus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channelAlgae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~NA,
+         !grepl("lterniflora|hragmites|atens|stichlis|gerardii|Spartina cynosuroides|Bolboschoenus robustus|Scirpus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Scirpus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Schoenoplectus americanus|Scirpus americanus|Limonium nashii|Triglochin maritima|Typha|Spartina pectinata|Solidago sempervirens|Baccharis halimifolia|Iva|Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Carya|Quercus|Rhus|Rhamnus|Ulmus|Salix|Upland|upland|Mowed Grass|Bare Ground (road/pavement)|Ditch|ditch|Creek|creek|Pool|pool|Panne|panne|Channel|channel|Algae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown|water|Water|Lythrum salicaria|Lonicera japonica",Species)~Species
        ))%>%
   filter(!is.na(Species))%>%
   mutate(genus=sub("[[:space:]].*","",Species))%>%
@@ -148,7 +140,7 @@ additional_spp<-rbind(common2,rare4)%>%
   summarise(Species=list(unique(Species)))%>%
   #remove uninformative groups
   filter(genus!="Angiosperm")
-# 5 additional veg groups...
+# 2 additional veg groups...
 
 
 
@@ -174,12 +166,15 @@ rapid_dat3<-rapid_dat2%>%
                            grepl("gerardii",.x)~"gerardii_pct",
                            #low_marsh_pct- other common low marsh species per veg protocol. Combine with alt_tall_pct + alt_pct after.
                            grepl("Spartina cynosuroides",.x)~"low_marsh_pct",
-                           #high_marsh_pct- other common high marsh species per veg protocol. Combine with alt_tall_pct, patens_pct, distichlis_pct, and gerardii_pct after.
-                           grepl("Bolboschoenus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp",.x)~"high_marsh_pct", #(pectinata,cynosuroides) exclude alt and patens
+                           #high_marsh_pct- other common high marsh species per veg protocol. Combine with alt_tall_pct, patens_pct, distichlis_pct, and gerardii_pct after. Bolboschoenus, schoenoplectus, and Scirpus are name changes.
+                           grepl("Bolboschoenus robustus|Scirpus robustus|Juncus sp|Juncus roemerianus|Limonium sp|Limonium carolinianum|Schoenoplectus pungens|Scirpus pungens|Schoenoplectus sp|Symphyotrichum tenuifolium|Symphyotrichum sp|Schoenoplectus americanus|Scirpus americanus|Limonium nashii|Triglochin maritima",.x)~"high_marsh_pct", #(pectinata,cynosuroides) exclude alt and patens
+                           #Shrubs
+                           grepl("Baccharis halimifolia",.x)~"Baccharis_pct",
+                           grepl("Iva",.x)~"Iva_pct",
                            #brackish_border_pct- common species
                            grepl("Typha|Spartina pectinata",.x)~"brackish_border_pct", #(angustifolia,latifolia)
                            #saltmarsh border
-                           grepl("Solidago sempervirens|Baccharis halimifolia|Iva",.x)~"saltmarsh_border_pct", #(sempervirens,graminifolia)
+                           grepl("Solidago sempervirens",.x)~"saltmarsh_border_pct", #(sempervirens,graminifolia)
                            #trees
                            grepl("Conifer|Acer|Catalpa|Betula|C. canadensis|Fagus|Fraxinus|Juglans|Juniperus|Pinus|Platanus|Populus|Prunus|Quercus|Rhus|Rhamnus|Carya|Salix|Ulmus",.x)&.x!="Angiosperm/Conifer shrub" ~"trees_pct",
                            #Natural and developed
@@ -193,8 +188,6 @@ rapid_dat3<-rapid_dat2%>%
                            #other less common species that occur in greater than 20 marsh patches. Grouped by genus.
                            .x%in%unlist(additional_spp[1,]$Species)~paste(additional_spp[1,]$genus,"pct",sep = "_"),
                            .x%in%unlist(additional_spp[2,]$Species)~paste(additional_spp[2,]$genus,"pct",sep = "_"),
-                           .x%in%unlist(additional_spp[3,]$Species)~paste(additional_spp[3,]$genus,"pct",sep = "_"),
-                           .x%in%unlist(additional_spp[4,]$Species)~paste(additional_spp[4,]$genus,"pct",sep = "_"),
                            #remove algae, non-descript names, and rare species 
                            (grepl("Algae|S. distichum|Fucus edentatus|Non-saltmarsh|Unknown",.x)|is.na(.x)|.x==".")~NA,
                            TRUE~NA)))%>%
@@ -288,7 +281,8 @@ rapid_dat8<-rapid_dat7%>%
   rowwise()%>%
   mutate(high_marsh_pct= sum(high_marsh_pct,distichlis_pct,gerardii_pct,patens_pct,alt_short_pct,na.rm = T),
          low_marsh_pct=sum(low_marsh_pct, alt_tall_pct,na.rm=T),
-         invasives_pct=sum(invasives_pct,phrag_pct,na.rm=T))%>%
+         invasives_pct=sum(invasives_pct,phrag_pct,na.rm=T),
+         saltmarsh_border_pct=sum(Baccharis_pct,Iva_pct,saltmarsh_border_pct,na.rm=T))%>%
   ungroup()
 
 write.csv(rapid_dat8, paste0(path_out,"Intermediate_outputs/Survey_Vegetation/processed_rapid_veg.csv"),row.names = F)
