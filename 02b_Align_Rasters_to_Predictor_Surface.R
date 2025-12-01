@@ -25,9 +25,8 @@ library(gdalUtilities)#raster manipulation
 ## Set up
 #--------------------------------------------------------------------------
 #file path names
-dat_path<-"D:/Nest_Models/Data/"
-path_out<-"D:/Nest_Models/Outputs/"
-
+dat_path<-"D:/Dissertation/01_ch_nest_modeling/Data/"
+path_out<-"D:/Dissertation/01_ch_nest_modeling/Results/"
 
 
 ## 1. Create prediction surface templates for each zone (this is what we will align the other raster layers to)
@@ -36,7 +35,7 @@ path_out<-"D:/Nest_Models/Outputs/"
 # Get the zone extents from Correll Marsh Veg data
 
 #list raster files
-file_list<-unlist(map(paste0(dat_path,"Correll_Marsh_Zones"),~list.files(.,pattern = "DEM.tif$",full.names=T)))
+file_list<-unlist(map(paste0(dat_path,"Inputs/Correll_Marsh_Zones"),~list.files(.,pattern = "DEM.tif$",full.names=T)))
 
 #read as raster layers
 vg_cls<-map(file_list,rast)
@@ -53,28 +52,28 @@ temps<-lapply(vg_cls,function(x)rast(extent=ext(x),crs="EPSG:26918",resolution=r
 ## 2. load all the environmental predictors
 #---------------------------------------------------------------------------
 #UVVR 
-uvvr_dif<-paste0(path_out,"Intermediate_outputs/UVVR/uvvr_diff_noOutlier_buff.tif")
-uvvr_mean<-paste0(path_out,"Intermediate_outputs/UVVR/uvvr_mean_noOutlier_buff.tif")
+uvvr_dif<-paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/UVVR/uvvr_diff_noOutlier_buff.tif")
+uvvr_mean<-paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/UVVR/uvvr_mean_noOutlier_buff.tif")
 
 #Precipitation
-precip<-paste0(path_out,"Intermediate_outputs/Precip/precip_buff.tif")
+precip<-paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/Precip/precip_buff.tif")
 
 # Tidal restrictions
-tideres<-paste0(path_out,"Intermediate_outputs/Tidal_restriction/tideres_buff.tif")
+tideres<-paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/Tidal_restriction/tideres_buff.tif")
 
 # Texture
 #list raster files
-cor_list<-unlist(map(paste0(path_out,"Intermediate_outputs/Texture"),~list.files(.,pattern = "^cor_txt_[0-9]_buff.tif$",full.names=T)))
-ent_list<-unlist(map(paste0(path_out,"Intermediate_outputs/Texture"),~list.files(.,pattern = "^ent_txt_[0-9]_buff.tif$",full.names=T)))
+cor_list<-unlist(map(paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/Texture"),~list.files(.,pattern = "^cor_txt_[0-9]_buff.tif$",full.names=T)))
+ent_list<-unlist(map(paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/Texture"),~list.files(.,pattern = "^ent_txt_[0-9]_buff.tif$",full.names=T)))
 
 # NDVI
-ndvi_list<-unlist(map(paste0(path_out,"Intermediate_outputs/NDVI"),~list.files(.,pattern = "_zeroed_NDVI_buff.tif$",full.names=T)))
+ndvi_list<-unlist(map(paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/NDVI"),~list.files(.,pattern = "_zeroed_NDVI_buff.tif$",full.names=T)))
 
 # Principal Component of raw NAIP reflection bands (R, G, B)
-pca_list<-unlist(map(paste0(path_out,"Intermediate_outputs/PCA"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
+pca_list<-unlist(map(paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/PCA"),~list.files(.,pattern = "PC1.tif$",full.names=T)))
 
 # Elevation
-dem_list<-unlist(map(paste0(path_out,"Intermediate_outputs/Elevation"),~list.files(.,pattern = "DEM_buff.tif$",full.names=T)))
+dem_list<-unlist(map(paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/Elevation"),~list.files(.,pattern = "DEM_buff.tif$",full.names=T)))
 
 
 #combine data that are at the full range extent
@@ -226,7 +225,7 @@ mapply(align_z_rast_mode,file_list2[c(1:8)],temps,collapse_string=paste0("_",res
 hi_files<-list()
 lo_files<-list()
 
-if (!file.exists(paste0(path_out,"Intermediate_outputs/LOMARSH/Z1_lomarsh_",reso,".tif"))) {
+if (!file.exists(paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/LOMARSH/Z1_lomarsh_",reso,".tif"))) {
   
 for(i in 1:length(vg_cls)){
 # distinguish high/low marsh by setting high/low marsh values to 1 and all other values to 0
@@ -248,9 +247,9 @@ hi<-dplyr::rename_with(hi,function(x){x<-'HIMARSH'},.cols = everything())
 lo<-dplyr::rename_with(lo,function(x){x<-'LOMARSH'},.cols = everything())
 
 #create output file names for the high marsh proportions 
-hi_files[[i]]<-paste0(path_out,"Intermediate_outputs/HIMARSH/Z",i,"_himarsh_",reso,".tif")
+hi_files[[i]]<-paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/HIMARSH/Z",i,"_himarsh_",reso,".tif")
 
-lo_files[[i]]<-paste0(path_out,"Intermediate_outputs/LOMARSH/Z",i,"_lomarsh_",reso,".tif")
+lo_files[[i]]<-paste0(dat_path,"Outputs/environmental_predictors_30m_aligned/LOMARSH/Z",i,"_lomarsh_",reso,".tif")
 #write the new raster with veg class proportions to file
 writeRaster(hi,filename=hi_files[[i]], overwrite=TRUE)
 writeRaster(lo,filename=lo_files[[i]], overwrite=TRUE)
