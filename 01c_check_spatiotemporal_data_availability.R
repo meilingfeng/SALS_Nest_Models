@@ -1,7 +1,6 @@
 
 library(sf)
 library(tidyverse)
-library(rgdal) #package for geospatial analyses
 library(terra)#updated version of raster package
 library(dismo)
 
@@ -95,6 +94,7 @@ data_sum[5,"N_records"]<-nrow(nests5)
 #total records removed
 data_sum[5,"N_records_removed"]<-nrow(nests4)-nrow(nests5)
 
+#"ABDU", "AMOY","MAWR","KIRA"
 
 #Step 5. Select years with standard SHARP demo protocol (2010-present)
 nests6<-nests5%>%
